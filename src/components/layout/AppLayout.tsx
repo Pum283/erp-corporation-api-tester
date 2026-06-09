@@ -36,7 +36,7 @@ export function AppLayout() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <small>API v2 · localhost:7000</small>
+          <small>API v2 · https://localhost:7001</small>
         </div>
       </aside>
 

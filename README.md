@@ -28,14 +28,14 @@ npm install
 npm run dev
 ```
 
-**http://localhost:810** — Tài khoản seed: `admin@company.com` / `AdminPassword123!`
+**http://localhost:810** — Tài khoản seed: `admin@company.com` / `!Abc123` (mật khẩu chung cho mọi user seed)
 
 ## Cấu hình
 
 | Mục | Giá trị |
 |-----|---------|
-| Port | `810` |
-| Proxy | `/api` → `http://localhost:7000` |
+| Port FE | `810` |
+| API URL | `https://localhost:7001` (biến `VITE_API_BASE_URL` trong `.env`) |
 
 ## Cấu trúc
 

@@ -1,6 +1,12 @@
 import { clearAuth, getRefreshToken, getToken, saveAuth } from '../lib/storage';
 import type { ApiError, TokenResponse } from '../types/entities';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001').replace(/\/$/, '');
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 let refreshPromise: Promise<boolean> | null = null;
 
 async function tryRefreshToken(): Promise<boolean> {
@@ -10,7 +16,7 @@ async function tryRefreshToken(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const response = await fetch('/api/auth/refresh', {
+        const response = await fetch(apiUrl('/api/auth/refresh'), {
           method: 'POST',
           headers: {
             Accept: 'application/json',
@@ -89,7 +95,7 @@ async function request<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     method: options.method ?? 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

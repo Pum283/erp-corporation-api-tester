@@ -8,7 +8,7 @@ export function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('admin@company.com');
-  const [password, setPassword] = useState('AdminPassword123!');
+  const [password, setPassword] = useState('!Abc123');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,7 +62,7 @@ export function LoginPage() {
             {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
-        <p className="login-hint">Tài khoản seed: admin@company.com / AdminPassword123!</p>
+        <p className="login-hint">Tài khoản seed: admin@company.com / !Abc123 (mật khẩu chung)</p>
       </div>
     </div>
   );

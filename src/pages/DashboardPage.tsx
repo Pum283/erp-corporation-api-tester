@@ -101,8 +101,8 @@ export function DashboardPage() {
                 </dd>
                 <dt>Frontend</dt>
                 <dd>http://localhost:810</dd>
-                <dt>Backend proxy</dt>
-                <dd>/api → :7000</dd>
+                <dt>Backend API</dt>
+                <dd>{import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7001'}</dd>
               </dl>
             </section>
           </div>
