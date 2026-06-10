@@ -13,4 +13,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        if (
+          warning.message.includes('/*#__PURE__*/') &&
+          warning.message.includes('@microsoft/signalr')
+        ) {
+          return;
+        }
+        defaultHandler(warning);
+      },
+    },
+  },
 });

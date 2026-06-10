@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
+import { DEFAULT_PAGE_SIZE } from '../api/pagination';
 import type { PaginatedResult, PaginationParams } from '../types/entities';
-
-const DEFAULT_PAGE_SIZE = 20;
 
 export function usePagination<T>(
   fetchPage: (params: PaginationParams) => Promise<PaginatedResult<T>>,
@@ -17,29 +16,25 @@ export function usePagination<T>(
     hasNextPage: false,
   });
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(initialPageSize);
 
   const load = useCallback(
-    async (nextPage = page, nextPageSize = pageSize) => {
+    async (nextPage: number, nextPageSize: number) => {
       setLoading(true);
       try {
         const result = await fetchPage({ page: nextPage, pageSize: nextPageSize });
         setData(result);
-        setPage(result.page);
-        setPageSize(result.pageSize);
       } finally {
         setLoading(false);
       }
     },
-    [fetchPage, page, pageSize],
+    [fetchPage],
   );
 
   const goToPage = useCallback(
     (p: number) => {
-      void load(p, pageSize);
+      void load(p, data.pageSize);
     },
-    [load, pageSize],
+    [load, data.pageSize],
   );
 
   const changePageSize = useCallback(

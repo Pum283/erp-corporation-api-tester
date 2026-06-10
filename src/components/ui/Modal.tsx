@@ -3,13 +3,15 @@ import { createPortal } from 'react-dom';
 
 interface ModalProps {
   title: string;
+  subtitle?: string;
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  size?: 'default' | 'wide' | 'xl';
 }
 
-export function Modal({ title, open, onClose, children, wide }: ModalProps) {
+export function Modal({ title, subtitle, open, onClose, children, wide, size }: ModalProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -36,6 +38,8 @@ export function Modal({ title, open, onClose, children, wide }: ModalProps) {
     }
   }
 
+  const panelSize = size ?? (wide ? 'wide' : 'default');
+
   return createPortal(
     <div
       className="modal-overlay"
@@ -43,15 +47,18 @@ export function Modal({ title, open, onClose, children, wide }: ModalProps) {
       role="presentation"
     >
       <div
-        className={`modal-panel ${wide ? 'modal-wide' : ''}`}
+        className={`modal-panel modal-${panelSize}`}
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
         <div className="modal-header">
-          <h2 id="modal-title">{title}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Đóng">
+          <div className="modal-header-text">
+            <h2 id="modal-title">{title}</h2>
+            {subtitle && <p className="modal-subtitle">{subtitle}</p>}
+          </div>
+          <button type="button" className="icon-btn modal-close" onClick={onClose} aria-label="Đóng">
             ×
           </button>
         </div>

@@ -67,17 +67,21 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
   const refreshAll = useCallback(async () => {
     if (!sharedLoadPromise) {
       sharedLoadPromise = (async () => {
-        const [d, j, r, p] = await Promise.all([
+        const [deptRes, levelRes, roleRes, permRes] = await Promise.allSettled([
           departmentsApi.listAll(),
           jobLevelsApi.listAll(),
           rolesApi.listAll(),
           permissionsApi.listAll(),
         ]);
         if (!mountedRef.current) return;
-        setDepartments(d);
-        setJobLevels([...j].sort((a, b) => a.levelOrder - b.levelOrder || a.levelName.localeCompare(b.levelName)));
-        setRoles(r);
-        setPermissions(p);
+        if (deptRes.status === 'fulfilled') setDepartments(deptRes.value);
+        if (levelRes.status === 'fulfilled') {
+          setJobLevels(
+            [...levelRes.value].sort((a, b) => a.levelOrder - b.levelOrder || a.levelName.localeCompare(b.levelName)),
+          );
+        }
+        if (roleRes.status === 'fulfilled') setRoles(roleRes.value);
+        if (permRes.status === 'fulfilled') setPermissions(permRes.value);
         setReady(true);
       })().finally(() => {
         sharedLoadPromise = null;

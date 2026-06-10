@@ -10,6 +10,12 @@ import type {
   TokenResponse,
   UserDepartmentDto,
   UserDto,
+  NotificationEventTypeDto,
+  NotificationTriggerBindingDto,
+  NotificationRecipientRulesDto,
+  UserNotificationDto,
+  UnreadNotificationCountDto,
+  NotificationChannel,
 } from '../types/entities';
 import type { ScopeType, UserStatus } from '../types/entities';
 
@@ -190,4 +196,82 @@ export const jobLevelsApi = {
 
 export const healthApi = {
   check: () => http<{ status: string; timestamp: string }>('/api/health', { auth: false }),
+};
+
+export const notificationsApi = {
+  list: (params?: PaginationParams & { isRead?: boolean }) => {
+    const q = paginationQuery(params);
+    const extra = params?.isRead !== undefined ? `${q ? '&' : '?'}isRead=${params.isRead}` : '';
+    return http<PaginatedResult<UserNotificationDto>>(`/api/notifications${q}${extra}`);
+  },
+  unreadCount: () => http<UnreadNotificationCountDto>('/api/notifications/unread-count'),
+  markRead: (id: string) =>
+    http<UserNotificationDto>(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllRead: () => http<void>('/api/notifications/read-all', { method: 'PATCH' }),
+};
+
+export const notificationEventTypesApi = {
+  list: (params?: PaginationParams) =>
+    http<PaginatedResult<NotificationEventTypeDto>>(
+      `/api/notification-event-types${paginationQuery(params)}`,
+    ),
+  listAll: () => fetchAllPages((p) => notificationEventTypesApi.list(p)),
+  get: (id: string) => http<NotificationEventTypeDto>(`/api/notification-event-types/${id}`),
+  create: (data: {
+    eventCode: string;
+    name: string;
+    module: string;
+    description?: string | null;
+    defaultTitleTemplate: string;
+    defaultBodyTemplate: string;
+  }) => http<NotificationEventTypeDto>('/api/notification-event-types', { method: 'POST', body: data }),
+  update: (
+    id: string,
+    data: {
+      name: string;
+      module: string;
+      description?: string | null;
+      defaultTitleTemplate: string;
+      defaultBodyTemplate: string;
+      isActive: boolean;
+    },
+  ) => http<NotificationEventTypeDto>(`/api/notification-event-types/${id}`, { method: 'PUT', body: data }),
+  remove: (id: string) => http<void>(`/api/notification-event-types/${id}`, { method: 'DELETE' }),
+  upsertTemplate: (
+    eventTypeId: string,
+    channel: NotificationChannel,
+    data: { titleTemplate: string; bodyTemplate: string; isActive: boolean },
+  ) =>
+    http(`/api/notification-event-types/${eventTypeId}/templates/${channel}`, {
+      method: 'PUT',
+      body: data,
+    }),
+};
+
+export const notificationTriggersApi = {
+  list: (params?: PaginationParams & { module?: string }) => {
+    const q = paginationQuery(params);
+    const extra = params?.module ? `${q ? '&' : '?'}module=${encodeURIComponent(params.module)}` : '';
+    return http<PaginatedResult<NotificationTriggerBindingDto>>(
+      `/api/notification-triggers${q}${extra}`,
+    );
+  },
+  listAll: () => fetchAllPages((p) => notificationTriggersApi.list(p)),
+  get: (triggerKey: string) =>
+    http<NotificationTriggerBindingDto>(
+      `/api/notification-triggers/${encodeURIComponent(triggerKey)}`,
+    ),
+  updateBinding: (
+    triggerKey: string,
+    data: {
+      eventTypeId?: string | null;
+      linkUrlTemplate?: string | null;
+      recipientRules?: NotificationRecipientRulesDto;
+      isActive: boolean;
+    },
+  ) =>
+    http<NotificationTriggerBindingDto>(
+      `/api/notification-triggers/${encodeURIComponent(triggerKey)}`,
+      { method: 'PUT', body: data },
+    ),
 };

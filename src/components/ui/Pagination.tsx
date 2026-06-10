@@ -1,4 +1,5 @@
 import type { PaginatedResult } from '../../types/entities';
+import { DEFAULT_PAGE_SIZE } from '../../api/pagination';
 
 interface PaginationProps {
   page: number;
@@ -77,7 +78,7 @@ export function emptyPaginated<T>(): PaginatedResult<T> {
   return {
     items: [],
     page: 1,
-    pageSize: 20,
+    pageSize: DEFAULT_PAGE_SIZE,
     totalCount: 0,
     totalPages: 0,
     hasPreviousPage: false,

@@ -2,7 +2,10 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { ReferenceDataProvider } from './context/ReferenceDataContext';
+import { NotificationEventTypesPage } from './pages/NotificationEventTypesPage';
+import { NotificationTriggersPage } from './pages/NotificationTriggersPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { DepartmentsPage } from './pages/DepartmentsPage';
 import { JobLevelsPage } from './pages/JobLevelsPage';
@@ -15,6 +18,7 @@ import './App.css';
 export default function App() {
   return (
     <AuthProvider>
+      <NotificationProvider>
       <ReferenceDataProvider>
         <BrowserRouter>
         <Routes>
@@ -27,12 +31,15 @@ export default function App() {
               <Route path="roles" element={<RolesPage />} />
               <Route path="permissions" element={<PermissionsPage />} />
               <Route path="job-levels" element={<JobLevelsPage />} />
+              <Route path="notification-event-types" element={<NotificationEventTypesPage />} />
+              <Route path="notification-triggers" element={<NotificationTriggersPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </BrowserRouter>
       </ReferenceDataProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { NotificationBell } from '../../components/notifications/NotificationBell';
 import { useAuth } from '../../context/AuthContext';
 
 const NAV = [
@@ -8,6 +9,8 @@ const NAV = [
   { to: '/roles', label: 'Vai trò', icon: '🛡' },
   { to: '/permissions', label: 'Quyền hệ thống', icon: '🔑' },
   { to: '/job-levels', label: 'Cấp bậc', icon: '🏷' },
+  { to: '/notification-event-types', label: 'Loại thông báo', icon: '📋' },
+  { to: '/notification-triggers', label: 'Gán thông báo', icon: '🔗' },
 ];
 
 export function AppLayout() {
@@ -45,6 +48,7 @@ export function AppLayout() {
         <header className="erp-topbar">
           <div className="topbar-title">Hệ thống quản trị doanh nghiệp</div>
           <div className="topbar-user">
+            <NotificationBell />
             <div className="user-chip">
               <span className="user-avatar">{(user?.fullName ?? '?')[0]}</span>
               <div>
