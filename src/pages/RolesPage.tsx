@@ -1,16 +1,30 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { HttpError } from '../api/http';
 import { rolesApi } from '../api/services';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
-import type { PermissionDto, RoleDto } from '../types/entities';
+import { Pagination } from '../components/ui/Pagination';
+import { useReferenceData } from '../context/ReferenceDataContext';
+import { usePagination } from '../hooks/usePagination';
+import type { RoleDto } from '../types/entities';
 
 export function RolesPage() {
-  const [roles, setRoles] = useState<RoleDto[]>([]);
-  const [permissions, setPermissions] = useState<PermissionDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { permissions, refreshRoles, ready } = useReferenceData();
+  const {
+    items: roles,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    loading,
+    load,
+    goToPage,
+    changePageSize,
+  } = usePagination(rolesApi.list);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -34,22 +48,12 @@ export function RolesPage() {
   });
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [r, p] = await Promise.all([rolesApi.list(), rolesApi.permissions()]);
-      setRoles(r);
-      setPermissions(p);
-    } catch (e) {
-      setError(e instanceof HttpError ? e.message : 'Không tải được dữ liệu');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!ready) return;
+    load(page, pageSize).catch((e) =>
+      setError(e instanceof HttpError ? e.message : 'Không tải được dữ liệu'),
+    );
+  }, [ready, page, pageSize, load]);
 
   function openCreate() {
     setEditing(null);
@@ -81,7 +85,8 @@ export function RolesPage() {
       await rolesApi.create(createForm);
       setSuccess('Tạo vai trò thành công');
       setFormOpen(false);
-      await load();
+      await refreshRoles();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Tạo thất bại');
     } finally {
@@ -97,7 +102,8 @@ export function RolesPage() {
       await rolesApi.update(editing.id, editForm);
       setSuccess('Cập nhật vai trò thành công');
       setFormOpen(false);
-      await load();
+      await refreshRoles();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Cập nhật thất bại');
     } finally {
@@ -112,7 +118,8 @@ export function RolesPage() {
       await rolesApi.updatePermissions(permRole.id, [...selectedPermIds]);
       setSuccess('Cập nhật quyền thành công');
       setPermOpen(false);
-      await load();
+      await refreshRoles();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Cập nhật quyền thất bại');
     } finally {
@@ -125,7 +132,8 @@ export function RolesPage() {
     try {
       await rolesApi.remove(role.id);
       setSuccess('Đã vô hiệu hóa vai trò');
-      await load();
+      await refreshRoles();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Xóa thất bại');
     }
@@ -143,8 +151,8 @@ export function RolesPage() {
   return (
     <div>
       <PageHeader
-        title="Vai trò & Quyền"
-        subtitle={`${roles.length} vai trò · ${permissions.length} quyền trong hệ thống`}
+        title="Vai trò"
+        subtitle={`${totalCount} vai trò · ${permissions.length} quyền trong hệ thống`}
         actions={
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             + Thêm vai trò
@@ -204,6 +212,16 @@ export function RolesPage() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          hasPreviousPage={hasPreviousPage}
+          hasNextPage={hasNextPage}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </div>
 
       <Modal

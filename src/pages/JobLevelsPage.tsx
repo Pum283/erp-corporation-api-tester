@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { SCOPE_TYPE_OPTIONS, scopeTypeLabel } from '../constants/enums';
 import { HttpError } from '../api/http';
 import { jobLevelsApi } from '../api/services';
@@ -6,6 +6,9 @@ import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { useReferenceData } from '../context/ReferenceDataContext';
+import { usePagination } from '../hooks/usePagination';
 import type { JobLevelDto, ScopeType } from '../types/entities';
 
 const emptyForm = {
@@ -19,8 +22,20 @@ const emptyForm = {
 };
 
 export function JobLevelsPage() {
-  const [items, setItems] = useState<JobLevelDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { refreshJobLevels, ready } = useReferenceData();
+  const {
+    items,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    loading,
+    load,
+    goToPage,
+    changePageSize,
+  } = usePagination(jobLevelsApi.list);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -28,20 +43,12 @@ export function JobLevelsPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setItems(await jobLevelsApi.list());
-    } catch (e) {
-      setError(e instanceof HttpError ? e.message : 'Không tải được danh sách');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!ready) return;
+    load(page, pageSize).catch((e) =>
+      setError(e instanceof HttpError ? e.message : 'Không tải được danh sách'),
+    );
+  }, [ready, page, pageSize, load]);
 
   function openCreate() {
     setEditing(null);
@@ -84,7 +91,8 @@ export function JobLevelsPage() {
         setSuccess('Tạo cấp bậc thành công');
       }
       setModalOpen(false);
-      await load();
+      await refreshJobLevels();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Lưu thất bại');
     } finally {
@@ -97,7 +105,8 @@ export function JobLevelsPage() {
     try {
       await jobLevelsApi.remove(item.id);
       setSuccess('Đã vô hiệu hóa cấp bậc');
-      await load();
+      await refreshJobLevels();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Xóa thất bại');
     }
@@ -161,6 +170,16 @@ export function JobLevelsPage() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          hasPreviousPage={hasPreviousPage}
+          hasNextPage={hasNextPage}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </div>
 
       <Modal

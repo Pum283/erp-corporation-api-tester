@@ -26,6 +26,31 @@ code { font-family: Consolas, monospace; font-size: 0.85em; }
 .block { display: block; }
 .pad { padding: 1.25rem; }
 
+/* Pagination */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+}
+.pagination-info { color: var(--muted); font-size: 0.85rem; }
+.pagination-controls { display: flex; align-items: center; gap: 0.5rem; }
+.pagination-page { font-size: 0.85rem; color: var(--muted); min-width: 5rem; text-align: center; }
+.pagination-size {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-size: 0.85rem; color: var(--muted);
+}
+.pagination-size select {
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: inherit;
+}
+
 /* Buttons */
 .btn {
   border: 1px solid var(--border);

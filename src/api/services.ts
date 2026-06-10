@@ -1,7 +1,10 @@
+import { fetchAllPages, paginationQuery } from './pagination';
 import { http } from './http';
 import type {
   DepartmentDto,
   JobLevelDto,
+  PaginatedResult,
+  PaginationParams,
   PermissionDto,
   RoleDto,
   TokenResponse,
@@ -33,7 +36,9 @@ export const authApi = {
 };
 
 export const usersApi = {
-  list: () => http<UserDto[]>('/api/users'),
+  list: (params?: PaginationParams) =>
+    http<PaginatedResult<UserDto>>(`/api/users${paginationQuery(params)}`),
+  listAll: () => fetchAllPages((p) => usersApi.list(p)),
   get: (id: string) => http<UserDto>(`/api/users/${id}`),
   create: (data: {
     employeeCode: string;
@@ -75,7 +80,9 @@ export const usersApi = {
 };
 
 export const departmentsApi = {
-  list: () => http<DepartmentDto[]>('/api/departments'),
+  list: (params?: PaginationParams) =>
+    http<PaginatedResult<DepartmentDto>>(`/api/departments${paginationQuery(params)}`),
+  listAll: () => fetchAllPages((p) => departmentsApi.list(p)),
   get: (id: string) => http<DepartmentDto>(`/api/departments/${id}`),
   create: (data: {
     departmentName: string;
@@ -98,10 +105,38 @@ export const departmentsApi = {
   remove: (id: string) => http<void>(`/api/departments/${id}`, { method: 'DELETE' }),
 };
 
+export const permissionsApi = {
+  list: (params?: PaginationParams) =>
+    http<PaginatedResult<PermissionDto>>(`/api/permissions${paginationQuery(params)}`),
+  listAll: () => fetchAllPages((p) => permissionsApi.list(p)),
+  get: (id: string) => http<PermissionDto>(`/api/permissions/${id}`),
+  create: (data: {
+    permissionCode: string;
+    permissionName: string;
+    module: number;
+    action: number;
+    resource: string;
+    description?: string | null;
+  }) => http<PermissionDto>('/api/permissions', { method: 'POST', body: data }),
+  update: (
+    id: string,
+    data: {
+      permissionName: string;
+      description?: string | null;
+      isActive: boolean;
+    },
+  ) => http<PermissionDto>(`/api/permissions/${id}`, { method: 'PUT', body: data }),
+  remove: (id: string) => http<void>(`/api/permissions/${id}`, { method: 'DELETE' }),
+};
+
 export const rolesApi = {
-  list: () => http<RoleDto[]>('/api/roles'),
+  list: (params?: PaginationParams) =>
+    http<PaginatedResult<RoleDto>>(`/api/roles${paginationQuery(params)}`),
+  listAll: () => fetchAllPages((p) => rolesApi.list(p)),
   get: (id: string) => http<RoleDto>(`/api/roles/${id}`),
-  permissions: () => http<PermissionDto[]>('/api/roles/permissions'),
+  permissions: (params?: PaginationParams) =>
+    permissionsApi.list(params),
+  permissionsAll: () => permissionsApi.listAll(),
   create: (data: {
     roleName: string;
     displayName: string;
@@ -126,7 +161,9 @@ export const rolesApi = {
 };
 
 export const jobLevelsApi = {
-  list: () => http<JobLevelDto[]>('/api/job-levels'),
+  list: (params?: PaginationParams) =>
+    http<PaginatedResult<JobLevelDto>>(`/api/job-levels${paginationQuery(params)}`),
+  listAll: () => fetchAllPages((p) => jobLevelsApi.list(p)),
   get: (id: string) => http<JobLevelDto>(`/api/job-levels/${id}`),
   create: (data: {
     levelName: string;

@@ -1,15 +1,15 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { USER_STATUS_OPTIONS, userStatusLabel } from '../constants/enums';
 import { HttpError } from '../api/http';
-import { departmentsApi, jobLevelsApi, rolesApi, usersApi } from '../api/services';
+import { usersApi } from '../api/services';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { useReferenceData } from '../context/ReferenceDataContext';
+import { usePagination } from '../hooks/usePagination';
 import type {
-  DepartmentDto,
-  JobLevelDto,
-  RoleDto,
   UserDepartmentDto,
   UserDto,
   UserStatus,
@@ -31,11 +31,20 @@ const emptyUserForm = {
 };
 
 export function UsersPage() {
-  const [users, setUsers] = useState<UserDto[]>([]);
-  const [departments, setDepartments] = useState<DepartmentDto[]>([]);
-  const [jobLevels, setJobLevels] = useState<JobLevelDto[]>([]);
-  const [roles, setRoles] = useState<RoleDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { departments, jobLevels, roles, ready } = useReferenceData();
+  const {
+    items: users,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    loading,
+    load,
+    goToPage,
+    changePageSize,
+  } = usePagination(usersApi.list);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -53,29 +62,12 @@ export function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [u, d, j, r] = await Promise.all([
-        usersApi.list(),
-        departmentsApi.list(),
-        jobLevelsApi.list(),
-        rolesApi.list(),
-      ]);
-      setUsers(u);
-      setDepartments(d);
-      setJobLevels(j);
-      setRoles(r);
-    } catch (e) {
-      setError(e instanceof HttpError ? e.message : 'Không tải được dữ liệu');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!ready) return;
+    load(page, pageSize).catch((e) =>
+      setError(e instanceof HttpError ? e.message : 'Không tải được dữ liệu'),
+    );
+  }, [ready, page, pageSize, load]);
 
   const filtered = users.filter(
     (u) =>
@@ -177,7 +169,7 @@ export function UsersPage() {
         setSuccess('Tạo nhân sự thành công');
       }
       closeModal();
-      await load();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Lưu thất bại');
     } finally {
@@ -190,7 +182,7 @@ export function UsersPage() {
     try {
       await usersApi.remove(user.id);
       setSuccess('Đã vô hiệu hóa nhân sự');
-      await load();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Xóa thất bại');
     }
@@ -203,7 +195,7 @@ export function UsersPage() {
       await usersApi.assignRoles(selected.id, roleIds);
       setSuccess('Gán vai trò thành công');
       closeModal();
-      await load();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Gán vai trò thất bại');
     } finally {
@@ -275,7 +267,7 @@ export function UsersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <span className="muted">{filtered.length} nhân sự</span>
+        <span className="muted">{totalCount} nhân sự</span>
       </div>
 
       <div className="table-card">
@@ -338,6 +330,16 @@ export function UsersPage() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          hasPreviousPage={hasPreviousPage}
+          hasNextPage={hasNextPage}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </div>
 
       <Modal
@@ -346,7 +348,7 @@ export function UsersPage() {
         onClose={closeModal}
         wide
       >
-        <form className="form-grid" onSubmit={handleSaveUser}>
+        <form className="form-grid" onSubmit={handleSaveUser} autoComplete="off">
           {!selected && (
             <label>
               Mã nhân viên *

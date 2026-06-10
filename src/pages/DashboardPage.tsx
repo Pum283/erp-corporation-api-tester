@@ -1,60 +1,50 @@
 import { useEffect, useState } from 'react';
-import {
-  departmentsApi,
-  healthApi,
-  jobLevelsApi,
-  rolesApi,
-  usersApi,
-} from '../api/services';
+import { healthApi, usersApi } from '../api/services';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { useReferenceData } from '../context/ReferenceDataContext';
 
 interface Stats {
   users: number;
-  departments: number;
-  roles: number;
-  jobLevels: number;
   permissions: number;
   apiStatus: string;
 }
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const { departments, roles, jobLevels, permissions, loading: refLoading, ready } = useReferenceData();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!ready) return;
+
     (async () => {
       try {
-        const [users, departments, roles, jobLevels, health] = await Promise.all([
-          usersApi.list(),
-          departmentsApi.list(),
-          rolesApi.list(),
-          jobLevelsApi.list(),
+        const [usersPage, health] = await Promise.all([
+          usersApi.list({ page: 1, pageSize: 1 }),
           healthApi.check(),
         ]);
-        const perms = await rolesApi.permissions();
         setStats({
-          users: users.length,
-          departments: departments.length,
-          roles: roles.length,
-          jobLevels: jobLevels.length,
-          permissions: perms.length,
+          users: usersPage.totalCount,
+          permissions: permissions.length,
           apiStatus: health.status,
         });
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [ready, permissions.length]);
 
   const cards = [
     { label: 'Nhân sự', value: stats?.users, color: 'blue' },
-    { label: 'Phòng ban', value: stats?.departments, color: 'green' },
-    { label: 'Vai trò', value: stats?.roles, color: 'purple' },
-    { label: 'Cấp bậc', value: stats?.jobLevels, color: 'amber' },
+    { label: 'Phòng ban', value: departments.length, color: 'green' },
+    { label: 'Vai trò', value: roles.length, color: 'purple' },
+    { label: 'Cấp bậc', value: jobLevels.length, color: 'amber' },
     { label: 'Quyền hệ thống', value: stats?.permissions, color: 'rose' },
   ];
+
+  const pageLoading = refLoading || loading;
 
   return (
     <div>
@@ -63,7 +53,7 @@ export function DashboardPage() {
         subtitle="Tổng quan hệ thống nhân sự và phân quyền"
       />
 
-      {loading ? (
+      {pageLoading ? (
         <p className="muted">Đang tải thống kê...</p>
       ) : (
         <>

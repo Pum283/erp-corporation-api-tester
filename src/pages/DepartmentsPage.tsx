@@ -1,10 +1,13 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { HttpError } from '../api/http';
 import { departmentsApi, usersApi } from '../api/services';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { useReferenceData } from '../context/ReferenceDataContext';
+import { usePagination } from '../hooks/usePagination';
 import type { DepartmentDto, UserDto } from '../types/entities';
 
 const emptyForm = {
@@ -17,9 +20,22 @@ const emptyForm = {
 };
 
 export function DepartmentsPage() {
-  const [items, setItems] = useState<DepartmentDto[]>([]);
+  const { departments: allDepartments, refreshDepartments, ready } = useReferenceData();
+  const {
+    items,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    loading,
+    load,
+    goToPage,
+    changePageSize,
+  } = usePagination(departmentsApi.list);
   const [users, setUsers] = useState<UserDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -27,22 +43,22 @@ export function DepartmentsPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [depts, userList] = await Promise.all([departmentsApi.list(), usersApi.list()]);
-      setItems(depts);
-      setUsers(userList);
-    } catch (e) {
-      setError(e instanceof HttpError ? e.message : 'Không tải được danh sách');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    setUsersLoading(true);
+    usersApi
+      .listAll()
+      .then(setUsers)
+      .catch((e) => setError(e instanceof HttpError ? e.message : 'Không tải được nhân sự'))
+      .finally(() => setUsersLoading(false));
+  }, [ready]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!ready) return;
+    load(page, pageSize).catch((e) =>
+      setError(e instanceof HttpError ? e.message : 'Không tải được danh sách'),
+    );
+  }, [ready, page, pageSize, load]);
 
   function openCreate() {
     setEditing(null);
@@ -84,7 +100,8 @@ export function DepartmentsPage() {
         setSuccess('Tạo phòng ban thành công');
       }
       setModalOpen(false);
-      await load();
+      await refreshDepartments();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Lưu thất bại');
     } finally {
@@ -97,7 +114,8 @@ export function DepartmentsPage() {
     try {
       await departmentsApi.remove(item.id);
       setSuccess('Đã vô hiệu hóa phòng ban');
-      await load();
+      await refreshDepartments();
+      await load(page, pageSize);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Xóa thất bại');
     }
@@ -118,7 +136,7 @@ export function DepartmentsPage() {
       {success && <Alert type="success" message={success} onClose={() => setSuccess(null)} />}
 
       <div className="table-card">
-        {loading ? (
+        {loading || usersLoading ? (
           <p className="muted pad">Đang tải...</p>
         ) : (
           <table className="data-table">
@@ -161,6 +179,16 @@ export function DepartmentsPage() {
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          totalPages={totalPages}
+          hasPreviousPage={hasPreviousPage}
+          hasNextPage={hasNextPage}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </div>
 
       <Modal
@@ -192,7 +220,7 @@ export function DepartmentsPage() {
               onChange={(e) => setForm({ ...form, parentDepartmentId: e.target.value })}
             >
               <option value="">— Không có —</option>
-              {items
+              {allDepartments
                 .filter((d) => d.id !== editing?.id)
                 .map((d) => (
                   <option key={d.id} value={d.id}>

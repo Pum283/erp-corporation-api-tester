@@ -1,5 +1,7 @@
 export type UserStatus = 1 | 2 | 3 | 4 | 5 | 6;
 export type ScopeType = 1 | 2 | 3 | 4;
+export type PermissionModule = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type PermissionAction = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export interface TokenResponse {
   token: string;
@@ -57,8 +59,8 @@ export interface PermissionDto {
   id: string;
   permissionCode: string;
   permissionName: string;
-  module: number;
-  action: number;
+  module: PermissionModule;
+  action: PermissionAction;
   resource: string;
   description?: string | null;
   isActive: boolean;
@@ -90,4 +92,19 @@ export interface ApiError {
   title?: string;
   detail?: string;
   message?: string;
+}
+
+export interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 }

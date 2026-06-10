@@ -5,7 +5,8 @@ const NAV = [
   { to: '/', label: 'Tổng quan', icon: '◉' },
   { to: '/users', label: 'Nhân sự', icon: '👤' },
   { to: '/departments', label: 'Phòng ban', icon: '🏢' },
-  { to: '/roles', label: 'Vai trò & Quyền', icon: '🛡' },
+  { to: '/roles', label: 'Vai trò', icon: '🛡' },
+  { to: '/permissions', label: 'Quyền hệ thống', icon: '🔑' },
   { to: '/job-levels', label: 'Cấp bậc', icon: '🏷' },
 ];
 
