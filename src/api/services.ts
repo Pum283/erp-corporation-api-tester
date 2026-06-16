@@ -16,6 +16,11 @@ import type {
   UserNotificationDto,
   UnreadNotificationCountDto,
   NotificationChannel,
+  ConversationDto,
+  MessageDto,
+  MessageReactionDto,
+  TaskDto,
+  TaskCommentDto,
 } from '../types/entities';
 import type { ScopeType, UserStatus } from '../types/entities';
 
@@ -141,8 +146,8 @@ export const rolesApi = {
   listAll: () => fetchAllPages((p) => rolesApi.list(p)),
   get: (id: string) => http<RoleDto>(`/api/roles/${id}`),
   permissions: (params?: PaginationParams) =>
-    permissionsApi.list(params),
-  permissionsAll: () => permissionsApi.listAll(),
+    http<PaginatedResult<PermissionDto>>(`/api/roles/permissions${paginationQuery(params)}`),
+  permissionsAll: () => fetchAllPages((p) => rolesApi.permissions(p)),
   create: (data: {
     roleName: string;
     displayName: string;
@@ -274,4 +279,112 @@ export const notificationTriggersApi = {
       `/api/notification-triggers/${encodeURIComponent(triggerKey)}`,
       { method: 'PUT', body: data },
     ),
+};
+
+export const conversationsApi = {
+  list: () => http<ConversationDto[]>('/api/conversations'),
+  get: (id: string) => http<ConversationDto>(`/api/conversations/${id}`),
+  create: (data: {
+    conversationType: string;
+    title?: string | null;
+    description?: string | null;
+    isPrivate: boolean;
+    memberIds: string[];
+  }) => http<ConversationDto>('/api/conversations', { method: 'POST', body: data }),
+  getOrCreateDirect: (otherUserId: string) =>
+    http<ConversationDto>(`/api/conversations/direct/${otherUserId}`, { method: 'POST' }),
+  mute: (id: string, isMuted: boolean) =>
+    http<void>(`/api/conversations/${id}/mute`, { method: 'POST', body: isMuted }),
+  archive: (id: string, isArchived: boolean) =>
+    http<void>(`/api/conversations/${id}/archive`, { method: 'POST', body: isArchived }),
+  addMembers: (id: string, userIds: string[]) =>
+    http<void>(`/api/conversations/${id}/members`, { method: 'POST', body: userIds }),
+  removeMember: (id: string, userId: string) =>
+    http<void>(`/api/conversations/${id}/members/${userId}`, { method: 'DELETE' }),
+};
+
+export const messagesApi = {
+  list: (conversationId: string, params?: { page?: number; pageSize?: number }) =>
+    http<MessageDto[]>(
+      `/api/conversations/${conversationId}/messages?page=${params?.page || 1}&pageSize=${
+        params?.pageSize || 50
+      }`,
+    ),
+  send: (
+    conversationId: string,
+    data: {
+      content?: string | null;
+      messageType: string;
+      parentMessageID?: string | null;
+      attachments?: any[];
+    },
+  ) =>
+    http<MessageDto>(`/api/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: data,
+    }),
+  edit: (id: string, newContent: string) =>
+    http<MessageDto>(`/api/messages/${id}`, {
+      method: 'PUT',
+      body: newContent,
+    }),
+  remove: (id: string) => http<void>(`/api/messages/${id}`, { method: 'DELETE' }),
+  toggleReaction: (id: string, reactionType: string) =>
+    http<MessageReactionDto>(`/api/messages/${id}/reactions`, {
+      method: 'POST',
+      body: reactionType,
+    }),
+  markAsRead: (conversationId: string) =>
+    http<void>(`/api/conversations/${conversationId}/read`, { method: 'POST' }),
+};
+
+export const tasksApi = {
+  list: (params?: PaginationParams & { search?: string; status?: string; priority?: string; assigneeId?: string }) => {
+    let q = paginationQuery(params);
+    if (params?.search) q += `${q ? '&' : '?'}search=${encodeURIComponent(params.search)}`;
+    if (params?.status) q += `${q ? '&' : '?'}status=${encodeURIComponent(params.status)}`;
+    if (params?.priority) q += `${q ? '&' : '?'}priority=${encodeURIComponent(params.priority)}`;
+    if (params?.assigneeId) q += `${q ? '&' : '?'}assigneeId=${encodeURIComponent(params.assigneeId)}`;
+    return http<PaginatedResult<TaskDto>>(`/api/tasks${q}`);
+  },
+  get: (id: string) => http<TaskDto>(`/api/tasks/${id}`),
+  create: (data: {
+    title: string;
+    description?: string | null;
+    taskType: string;
+    priority: string;
+    startDate?: string | null;
+    dueDate?: string | null;
+    estimatedHours?: number | null;
+    isRecurring: boolean;
+    recurringPattern?: string | null;
+    parentTaskID?: string | null;
+    assigneeIds: string[];
+    primaryAssigneeId?: string | null;
+    followerIds: string[];
+    kpiIds: string[];
+    lmsCourseIds: string[];
+  }) => http<TaskDto>('/api/tasks', { method: 'POST', body: data }),
+  update: (
+    id: string,
+    data: {
+      title: string;
+      description?: string | null;
+      taskType: string;
+      status: string;
+      priority: string;
+      progress: number;
+      startDate?: string | null;
+      dueDate?: string | null;
+      estimatedHours?: number | null;
+      actualHours?: number | null;
+      isRecurring: boolean;
+      recurringPattern?: string | null;
+      parentTaskID?: string | null;
+    },
+  ) => http<TaskDto>(`/api/tasks/${id}`, { method: 'PUT', body: data }),
+  remove: (id: string) => http<void>(`/api/tasks/${id}`, { method: 'DELETE' }),
+  listComments: (id: string) => http<TaskCommentDto[]>(`/api/tasks/${id}/comments`),
+  addComment: (id: string, data: { content: string; parentCommentID?: string | null }) =>
+    http<TaskCommentDto>(`/api/tasks/${id}/comments`, { method: 'POST', body: data }),
 };

@@ -2,12 +2,15 @@ import { FormEvent, useEffect, useState } from 'react';
 import { SCOPE_TYPE_OPTIONS, scopeTypeLabel } from '../constants/enums';
 import { HttpError } from '../api/http';
 import { jobLevelsApi } from '../api/services';
+import { CanAccess } from '../components/auth/CanAccess';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
+import { Select } from '../components/ui/Select';
 import { useReferenceData } from '../context/ReferenceDataContext';
+import { P } from '../config/permissions';
 import { usePagination } from '../hooks/usePagination';
 import type { JobLevelDto, ScopeType } from '../types/entities';
 
@@ -118,9 +121,11 @@ export function JobLevelsPage() {
         title="Cấp bậc chức danh"
         subtitle="Quản lý Job Level và phạm vi dữ liệu mặc định (Scope)"
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            + Thêm cấp bậc
-          </button>
+          <CanAccess permission={P.HRM_JOBLEVEL_CREATE}>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              + Thêm cấp bậc
+            </button>
+          </CanAccess>
         }
       />
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
@@ -154,16 +159,20 @@ export function JobLevelsPage() {
                     <Badge active={j.isActive}>{j.isActive ? 'Hoạt động' : 'Ngừng'}</Badge>
                   </td>
                   <td className="actions-cell">
-                    <button type="button" className="btn btn-sm" onClick={() => openEdit(j)}>
-                      Sửa
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDelete(j)}
-                    >
-                      Xóa
-                    </button>
+                    <CanAccess permission={P.HRM_JOBLEVEL_UPDATE}>
+                      <button type="button" className="btn btn-sm" onClick={() => openEdit(j)}>
+                        Sửa
+                      </button>
+                    </CanAccess>
+                    <CanAccess permission={P.HRM_JOBLEVEL_DELETE}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDelete(j)}
+                      >
+                        Xóa
+                      </button>
+                    </CanAccess>
                   </td>
                 </tr>
               ))}
@@ -208,18 +217,16 @@ export function JobLevelsPage() {
           </label>
           <label>
             Scope mặc định *
-            <select
+            <Select
               value={form.defaultScopeType}
-              onChange={(e) =>
-                setForm({ ...form, defaultScopeType: Number(e.target.value) as ScopeType })
+              onChange={(v) =>
+                setForm({ ...form, defaultScopeType: Number(v) as ScopeType })
               }
-            >
-              {SCOPE_TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              options={SCOPE_TYPE_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
+            />
           </label>
           <label>
             Lương tối thiểu

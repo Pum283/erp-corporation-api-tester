@@ -9,9 +9,10 @@ interface ModalProps {
   children: ReactNode;
   wide?: boolean;
   size?: 'default' | 'wide' | 'xl';
+  bodyClassName?: string;
 }
 
-export function Modal({ title, subtitle, open, onClose, children, wide, size }: ModalProps) {
+export function Modal({ title, subtitle, open, onClose, children, wide, size, bodyClassName }: ModalProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -62,7 +63,7 @@ export function Modal({ title, subtitle, open, onClose, children, wide, size }: 
             ×
           </button>
         </div>
-        <div className="modal-body">{children}</div>
+        <div className={`modal-body ${bodyClassName ?? ''}`}>{children}</div>
       </div>
     </div>,
     document.body,

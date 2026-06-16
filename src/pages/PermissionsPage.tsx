@@ -7,12 +7,15 @@ import {
 } from '../constants/enums';
 import { HttpError } from '../api/http';
 import { permissionsApi } from '../api/services';
+import { CanAccess } from '../components/auth/CanAccess';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
+import { Select } from '../components/ui/Select';
 import { useReferenceData } from '../context/ReferenceDataContext';
+import { P } from '../config/permissions';
 import { usePagination } from '../hooks/usePagination';
 import type { PermissionAction, PermissionDto, PermissionModule } from '../types/entities';
 
@@ -125,9 +128,11 @@ export function PermissionsPage() {
         title="Quyền hệ thống"
         subtitle="Quản lý mã quyền (permission) dùng trong RBAC"
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            + Thêm quyền
-          </button>
+          <CanAccess permission={P.SYSTEM_PERMISSION_CREATE}>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              + Thêm quyền
+            </button>
+          </CanAccess>
         }
       />
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
@@ -165,17 +170,21 @@ export function PermissionsPage() {
                     <Badge active={p.isActive}>{p.isActive ? 'Hoạt động' : 'Ngừng'}</Badge>
                   </td>
                   <td className="actions-cell">
-                    <button type="button" className="btn btn-sm" onClick={() => openEdit(p)}>
-                      Sửa
-                    </button>
-                    {p.isActive && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(p)}
-                      >
-                        Xóa
+                    <CanAccess permission={P.SYSTEM_PERMISSION_UPDATE}>
+                      <button type="button" className="btn btn-sm" onClick={() => openEdit(p)}>
+                        Sửa
                       </button>
+                    </CanAccess>
+                    {p.isActive && (
+                      <CanAccess permission={P.SYSTEM_PERMISSION_DELETE}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(p)}
+                        >
+                          Xóa
+                        </button>
+                      </CanAccess>
                     )}
                   </td>
                 </tr>
@@ -224,35 +233,31 @@ export function PermissionsPage() {
               </label>
               <label>
                 Module *
-                <select
+                <Select
                   required
                   value={form.module}
-                  onChange={(e) =>
-                    setForm({ ...form, module: Number(e.target.value) as PermissionModule })
+                  onChange={(v) =>
+                    setForm({ ...form, module: Number(v) as PermissionModule })
                   }
-                >
-                  {PERMISSION_MODULE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  options={PERMISSION_MODULE_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                />
               </label>
               <label>
                 Hành động *
-                <select
+                <Select
                   required
                   value={form.action}
-                  onChange={(e) =>
-                    setForm({ ...form, action: Number(e.target.value) as PermissionAction })
+                  onChange={(v) =>
+                    setForm({ ...form, action: Number(v) as PermissionAction })
                   }
-                >
-                  {PERMISSION_ACTION_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  options={PERMISSION_ACTION_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                />
               </label>
             </>
           ) : (

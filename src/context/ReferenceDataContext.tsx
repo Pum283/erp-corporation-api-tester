@@ -8,7 +8,10 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { departmentsApi, jobLevelsApi, permissionsApi, rolesApi } from '../api/services';
+import { departmentsApi, jobLevelsApi, rolesApi } from '../api/services';
+import { P } from '../config/permissions';
+import { useAccess } from '../hooks/useAccess';
+import { loadPermissionCatalog } from '../lib/permissionCatalog';
 import { useAuth } from './AuthContext';
 import type { DepartmentDto, JobLevelDto, PermissionDto, RoleDto } from '../types/entities';
 
@@ -31,7 +34,8 @@ const ReferenceDataContext = createContext<ReferenceDataContextValue | null>(nul
 let sharedLoadPromise: Promise<void> | null = null;
 
 export function ReferenceDataProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
+  const { hasAnyPermission, hasPermission } = useAccess();
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
   const [jobLevels, setJobLevels] = useState<JobLevelDto[]>([]);
   const [roles, setRoles] = useState<RoleDto[]>([]);
@@ -47,42 +51,109 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const canLoadDepartments = hasAnyPermission([
+    P.HRM_DEPARTMENT_READ,
+    P.HRM_EMPLOYEE_CREATE,
+    P.HRM_EMPLOYEE_UPDATE,
+  ]);
+  const canLoadJobLevels = hasAnyPermission([
+    P.HRM_JOBLEVEL_READ,
+    P.HRM_EMPLOYEE_CREATE,
+    P.HRM_EMPLOYEE_UPDATE,
+  ]);
+  const canLoadRoles = hasAnyPermission([
+    P.SYSTEM_ROLE_READ,
+    P.SYSTEM_ROLE_ASSIGN,
+    P.SYSTEM_NOTIFICATION_TRIGGER_READ,
+  ]);
+  const canLoadPermissions = hasAnyPermission([P.SYSTEM_PERMISSION_READ, P.SYSTEM_ROLE_READ]);
+  const usePermissionsApiForCatalog = hasPermission(P.SYSTEM_PERMISSION_READ);
+
   const refreshDepartments = useCallback(async () => {
+    if (!canLoadDepartments) {
+      setDepartments([]);
+      return;
+    }
     setDepartments(await departmentsApi.listAll());
-  }, []);
+  }, [canLoadDepartments]);
 
   const refreshJobLevels = useCallback(async () => {
+    if (!canLoadJobLevels) {
+      setJobLevels([]);
+      return;
+    }
     const list = await jobLevelsApi.listAll();
     setJobLevels([...list].sort((a, b) => a.levelOrder - b.levelOrder || a.levelName.localeCompare(b.levelName)));
-  }, []);
+  }, [canLoadJobLevels]);
 
   const refreshRoles = useCallback(async () => {
+    if (!canLoadRoles) {
+      setRoles([]);
+      return;
+    }
     setRoles(await rolesApi.listAll());
-  }, []);
+  }, [canLoadRoles]);
 
   const refreshPermissions = useCallback(async () => {
-    setPermissions(await permissionsApi.listAll());
-  }, []);
+    if (!canLoadPermissions) {
+      setPermissions([]);
+      return;
+    }
+    setPermissions(await loadPermissionCatalog(usePermissionsApiForCatalog));
+  }, [canLoadPermissions, usePermissionsApiForCatalog]);
 
   const refreshAll = useCallback(async () => {
     if (!sharedLoadPromise) {
       sharedLoadPromise = (async () => {
-        const [deptRes, levelRes, roleRes, permRes] = await Promise.allSettled([
-          departmentsApi.listAll(),
-          jobLevelsApi.listAll(),
-          rolesApi.listAll(),
-          permissionsApi.listAll(),
-        ]);
-        if (!mountedRef.current) return;
-        if (deptRes.status === 'fulfilled') setDepartments(deptRes.value);
-        if (levelRes.status === 'fulfilled') {
-          setJobLevels(
-            [...levelRes.value].sort((a, b) => a.levelOrder - b.levelOrder || a.levelName.localeCompare(b.levelName)),
+        const tasks: Promise<void>[] = [];
+
+        if (canLoadDepartments) {
+          tasks.push(
+            departmentsApi.listAll().then((value) => {
+              if (mountedRef.current) setDepartments(value);
+            }),
           );
+        } else if (mountedRef.current) {
+          setDepartments([]);
         }
-        if (roleRes.status === 'fulfilled') setRoles(roleRes.value);
-        if (permRes.status === 'fulfilled') setPermissions(permRes.value);
-        setReady(true);
+
+        if (canLoadJobLevels) {
+          tasks.push(
+            jobLevelsApi.listAll().then((value) => {
+              if (!mountedRef.current) return;
+              setJobLevels(
+                [...value].sort(
+                  (a, b) => a.levelOrder - b.levelOrder || a.levelName.localeCompare(b.levelName),
+                ),
+              );
+            }),
+          );
+        } else if (mountedRef.current) {
+          setJobLevels([]);
+        }
+
+        if (canLoadRoles) {
+          tasks.push(
+            rolesApi.listAll().then((value) => {
+              if (mountedRef.current) setRoles(value);
+            }),
+          );
+        } else if (mountedRef.current) {
+          setRoles([]);
+        }
+
+        if (canLoadPermissions) {
+          tasks.push(
+            loadPermissionCatalog(usePermissionsApiForCatalog).then((value) => {
+              if (mountedRef.current) setPermissions(value);
+            }),
+          );
+        } else if (mountedRef.current) {
+          setPermissions([]);
+        }
+
+        await Promise.allSettled(tasks);
+        if (mountedRef.current) setReady(true);
       })().finally(() => {
         sharedLoadPromise = null;
       });
@@ -94,7 +165,7 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [canLoadDepartments, canLoadJobLevels, canLoadRoles, canLoadPermissions, usePermissionsApiForCatalog]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -106,8 +177,9 @@ export function ReferenceDataProvider({ children }: { children: ReactNode }) {
       sharedLoadPromise = null;
       return;
     }
+    if (authLoading || !user) return;
     refreshAll();
-  }, [isAuthenticated, refreshAll]);
+  }, [isAuthenticated, authLoading, user, refreshAll]);
 
   const value = useMemo(
     () => ({

@@ -1,12 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { HttpError } from '../api/http';
 import { notificationEventTypesApi, notificationTriggersApi, usersApi } from '../api/services';
+import { CanAccess } from '../components/auth/CanAccess';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
+import { Select } from '../components/ui/Select';
 import { useReferenceData } from '../context/ReferenceDataContext';
+import { P } from '../config/permissions';
 import { usePagination } from '../hooks/usePagination';
 import type {
   NotificationEventTypeDto,
@@ -222,9 +225,11 @@ export function NotificationTriggersPage() {
                       <Badge active={item.isActive}>{item.isActive ? 'Bật' : 'Tắt'}</Badge>
                     </td>
                     <td className="actions">
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}>
-                        Gán / Sửa
-                      </button>
+                      <CanAccess permission={P.SYSTEM_NOTIFICATION_TRIGGER_UPDATE}>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}>
+                          Gán / Sửa
+                        </button>
+                      </CanAccess>
                     </td>
                   </tr>
                 ))}
@@ -258,17 +263,18 @@ export function NotificationTriggersPage() {
               <div className="form-grid">
                 <label className="full">
                   Loại thông báo
-                  <select
+                  <Select
                     value={form.eventTypeId}
-                    onChange={(e) => setForm({ ...form, eventTypeId: e.target.value })}
-                  >
-                    <option value="">— Chưa gán —</option>
-                    {eventTypes.map((et) => (
-                      <option key={et.id} value={et.id}>
-                        {et.name} ({et.eventCode})
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="— Chưa gán —"
+                    onChange={(v) => setForm({ ...form, eventTypeId: v })}
+                    options={[
+                      { value: '', label: '— Chưa gán —' },
+                      ...eventTypes.map((et) => ({
+                        value: et.id,
+                        label: `${et.name} (${et.eventCode})`,
+                      })),
+                    ]}
+                  />
                 </label>
                 <label className="full">
                   Link URL template

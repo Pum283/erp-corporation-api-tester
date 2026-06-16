@@ -1,12 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { HttpError } from '../api/http';
 import { departmentsApi, usersApi } from '../api/services';
+import { CanAccess } from '../components/auth/CanAccess';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
+import { Select } from '../components/ui/Select';
 import { useReferenceData } from '../context/ReferenceDataContext';
+import { P } from '../config/permissions';
 import { usePagination } from '../hooks/usePagination';
 import type { DepartmentDto, UserDto } from '../types/entities';
 
@@ -127,9 +130,11 @@ export function DepartmentsPage() {
         title="Phòng ban"
         subtitle="Quản lý cơ cấu tổ chức, phòng ban cha/con và trưởng phòng"
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            + Thêm phòng ban
-          </button>
+          <CanAccess permission={P.HRM_DEPARTMENT_CREATE}>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              + Thêm phòng ban
+            </button>
+          </CanAccess>
         }
       />
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
@@ -163,16 +168,20 @@ export function DepartmentsPage() {
                     <Badge active={d.isActive}>{d.isActive ? 'Hoạt động' : 'Ngừng'}</Badge>
                   </td>
                   <td className="actions-cell">
-                    <button type="button" className="btn btn-sm" onClick={() => openEdit(d)}>
-                      Sửa
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDelete(d)}
-                    >
-                      Xóa
-                    </button>
+                    <CanAccess permission={P.HRM_DEPARTMENT_UPDATE}>
+                      <button type="button" className="btn btn-sm" onClick={() => openEdit(d)}>
+                        Sửa
+                      </button>
+                    </CanAccess>
+                    <CanAccess permission={P.HRM_DEPARTMENT_DELETE}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDelete(d)}
+                      >
+                        Xóa
+                      </button>
+                    </CanAccess>
                   </td>
                 </tr>
               ))}
@@ -195,8 +204,10 @@ export function DepartmentsPage() {
         title={editing ? 'Cập nhật phòng ban' : 'Thêm phòng ban'}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        wide
       >
-        <form className="form-grid" onSubmit={handleSubmit}>
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <div className="form-grid">
           <label>
             Tên phòng ban *
             <input
@@ -215,33 +226,35 @@ export function DepartmentsPage() {
           </label>
           <label>
             Phòng ban cha
-            <select
+            <Select
               value={form.parentDepartmentId}
-              onChange={(e) => setForm({ ...form, parentDepartmentId: e.target.value })}
-            >
-              <option value="">— Không có —</option>
-              {allDepartments
-                .filter((d) => d.id !== editing?.id)
-                .map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.departmentCode} — {d.departmentName}
-                  </option>
-                ))}
-            </select>
+              placeholder="— Không có —"
+              onChange={(v) => setForm({ ...form, parentDepartmentId: v })}
+              options={[
+                { value: '', label: '— Không có —' },
+                ...allDepartments
+                  .filter((d) => d.id !== editing?.id)
+                  .map((d) => ({
+                    value: d.id,
+                    label: `${d.departmentCode} — ${d.departmentName}`,
+                  })),
+              ]}
+            />
           </label>
           <label>
             Trưởng phòng
-            <select
+            <Select
               value={form.managerId}
-              onChange={(e) => setForm({ ...form, managerId: e.target.value })}
-            >
-              <option value="">— Chưa gán —</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.employeeCode} — {u.fullName}
-                </option>
-              ))}
-            </select>
+              placeholder="— Chưa gán —"
+              onChange={(v) => setForm({ ...form, managerId: v })}
+              options={[
+                { value: '', label: '— Chưa gán —' },
+                ...users.map((u) => ({
+                  value: u.id,
+                  label: `${u.employeeCode} — ${u.fullName}`,
+                })),
+              ]}
+            />
           </label>
           <label className="span-2">
             Mô tả
@@ -261,13 +274,16 @@ export function DepartmentsPage() {
               Đang hoạt động
             </label>
           )}
-          <div className="form-actions span-2">
-            <button type="button" className="btn" onClick={() => setModalOpen(false)}>
-              Hủy
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Đang lưu...' : 'Lưu'}
-            </button>
+          </div>
+          <div className="modal-footer">
+            <div className="modal-footer-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>
+                Hủy
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={saving || usersLoading}>
+                {saving ? 'Đang lưu...' : 'Lưu'}
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { IconBell } from '../ui/Icons';
 import { useNotifications } from '../../context/NotificationContext';
 
 export function NotificationBell() {
@@ -28,8 +29,10 @@ export function NotificationBell() {
         aria-label="Thông báo"
         onClick={() => setPanelOpen(!panelOpen)}
       >
-        🔔
-        {unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+        <IconBell width={20} height={20} />
+        {unreadCount > 0 && (
+          <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+        )}
       </button>
 
       {panelOpen && (
@@ -50,8 +53,8 @@ export function NotificationBell() {
               )}
             </div>
             <div className="notification-list">
-              {loading && items.length === 0 && <p className="muted">Đang tải…</p>}
-              {!loading && items.length === 0 && <p className="muted">Không có thông báo</p>}
+              {loading && items.length === 0 && <p className="muted pad">Đang tải…</p>}
+              {!loading && items.length === 0 && <p className="muted pad">Không có thông báo</p>}
               {items.map((n) => (
                 <button
                   key={n.id}

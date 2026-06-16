@@ -2,12 +2,15 @@ import { FormEvent, useEffect, useState } from 'react';
 import { USER_STATUS_OPTIONS, userStatusLabel } from '../constants/enums';
 import { HttpError } from '../api/http';
 import { usersApi } from '../api/services';
+import { CanAccess } from '../components/auth/CanAccess';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
+import { Select } from '../components/ui/Select';
 import { useReferenceData } from '../context/ReferenceDataContext';
+import { P } from '../config/permissions';
 import { usePagination } from '../hooks/usePagination';
 import type {
   UserDepartmentDto,
@@ -53,6 +56,7 @@ export function UsersPage() {
   const [form, setForm] = useState(emptyUserForm);
   const [roleIds, setRoleIds] = useState<string[]>([]);
   const [newPassword, setNewPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [secondaryDepts, setSecondaryDepts] = useState<UserDepartmentDto[]>([]);
   const [addDeptForm, setAddDeptForm] = useState({
     departmentId: '',
@@ -110,7 +114,7 @@ export function UsersPage() {
 
   async function openRoles(user: UserDto) {
     setSelected(user);
-    const matched = roles.filter((r) => user.roles.includes(r.roleName)).map((r) => r.id);
+    const matched = roles.filter((r) => (user.roles ?? []).includes(r.roleName)).map((r) => r.id);
     setRoleIds(matched);
     setMode('roles');
   }
@@ -118,6 +122,7 @@ export function UsersPage() {
   function openPassword(user: UserDto) {
     setSelected(user);
     setNewPassword('');
+    setShowResetPassword(false);
     setMode('password');
   }
 
@@ -252,9 +257,11 @@ export function UsersPage() {
         title="Nhân sự"
         subtitle="Quản lý hồ sơ, vai trò, mật khẩu và phòng ban kiêm nhiệm"
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            + Thêm nhân sự
-          </button>
+          <CanAccess permission={P.HRM_EMPLOYEE_CREATE}>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              + Thêm nhân sự
+            </button>
+          </CanAccess>
         }
       />
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
@@ -302,28 +309,38 @@ export function UsersPage() {
                     <Badge active={u.isActive}>{userStatusLabel(u.status)}</Badge>
                   </td>
                   <td>
-                    <span className="role-tags">{u.roles.join(', ') || '—'}</span>
+                    <span className="role-tags">{(u.roles ?? []).join(', ') || '—'}</span>
                   </td>
                   <td className="actions-cell wrap">
-                    <button type="button" className="btn btn-sm" onClick={() => openEdit(u)}>
-                      Sửa
-                    </button>
-                    <button type="button" className="btn btn-sm" onClick={() => openRoles(u)}>
-                      Vai trò
-                    </button>
-                    <button type="button" className="btn btn-sm" onClick={() => openPassword(u)}>
-                      MK
-                    </button>
-                    <button type="button" className="btn btn-sm" onClick={() => openDepartments(u)}>
-                      Kiêm nhiệm
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDelete(u)}
-                    >
-                      Xóa
-                    </button>
+                    <CanAccess permission={P.HRM_EMPLOYEE_UPDATE}>
+                      <button type="button" className="btn btn-sm" onClick={() => openEdit(u)}>
+                        Sửa
+                      </button>
+                    </CanAccess>
+                    <CanAccess permission={P.SYSTEM_ROLE_ASSIGN}>
+                      <button type="button" className="btn btn-sm" onClick={() => openRoles(u)}>
+                        Vai trò
+                      </button>
+                    </CanAccess>
+                    <CanAccess permission={P.SYSTEM_USER_RESETPASSWORD}>
+                      <button type="button" className="btn btn-sm" onClick={() => openPassword(u)}>
+                        MK
+                      </button>
+                    </CanAccess>
+                    <CanAccess permission={P.HRM_EMPLOYEE_UPDATE}>
+                      <button type="button" className="btn btn-sm" onClick={() => openDepartments(u)}>
+                        Kiêm nhiệm
+                      </button>
+                    </CanAccess>
+                    <CanAccess permission={P.HRM_EMPLOYEE_DELETE}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDelete(u)}
+                      >
+                        Xóa
+                      </button>
+                    </CanAccess>
                   </td>
                 </tr>
               ))}
@@ -378,31 +395,27 @@ export function UsersPage() {
           </label>
           <label>
             Phòng ban *
-            <select
+            <Select
               required
               value={form.departmentId}
-              onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
-            >
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.departmentCode} — {d.departmentName}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm({ ...form, departmentId: v })}
+              options={departments.map((d) => ({
+                value: d.id,
+                label: `${d.departmentCode} — ${d.departmentName}`,
+              }))}
+            />
           </label>
           <label>
             Cấp bậc *
-            <select
+            <Select
               required
               value={form.jobLevelId}
-              onChange={(e) => setForm({ ...form, jobLevelId: e.target.value })}
-            >
-              {jobLevels.map((j) => (
-                <option key={j.id} value={j.id}>
-                  {j.levelName}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm({ ...form, jobLevelId: v })}
+              options={jobLevels.map((j) => ({
+                value: j.id,
+                label: j.levelName,
+              }))}
+            />
           </label>
           <label>
             Ngày vào *
@@ -415,32 +428,31 @@ export function UsersPage() {
           </label>
           <label>
             Trạng thái *
-            <select
+            <Select
               value={form.status}
-              onChange={(e) => setForm({ ...form, status: Number(e.target.value) as UserStatus })}
-            >
-              {USER_STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm({ ...form, status: Number(v) as UserStatus })}
+              options={USER_STATUS_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
+            />
           </label>
           <label>
             Quản lý trực tiếp
-            <select
+            <Select
               value={form.managerId}
-              onChange={(e) => setForm({ ...form, managerId: e.target.value })}
-            >
-              <option value="">— Không có —</option>
-              {users
-                .filter((u) => u.id !== selected?.id)
-                .map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.employeeCode} — {u.fullName}
-                  </option>
-                ))}
-            </select>
+              placeholder="— Không có —"
+              onChange={(v) => setForm({ ...form, managerId: v })}
+              options={[
+                { value: '', label: '— Không có —' },
+                ...users
+                  .filter((u) => u.id !== selected?.id)
+                  .map((u) => ({
+                    value: u.id,
+                    label: `${u.employeeCode} — ${u.fullName}`,
+                  })),
+              ]}
+            />
           </label>
           {!selected && (
             <label>
@@ -465,56 +477,118 @@ export function UsersPage() {
 
       <Modal
         title={`Gán vai trò: ${selected?.fullName ?? ''}`}
+        subtitle={`Chọn một hoặc nhiều vai trò · ${roleIds.length} đã chọn`}
         open={mode === 'roles'}
         onClose={closeModal}
       >
-        <div className="checkbox-list">
-          {roles.map((r) => (
-            <label key={r.id} className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={roleIds.includes(r.id)}
-                onChange={(e) => {
-                  if (e.target.checked) setRoleIds([...roleIds, r.id]);
-                  else setRoleIds(roleIds.filter((id) => id !== r.id));
-                }}
-              />
-              {r.displayName} <code>({r.roleName})</code>
-            </label>
-          ))}
-        </div>
-        <div className="form-actions">
-          <button type="button" className="btn" onClick={closeModal}>
-            Hủy
-          </button>
-          <button type="button" className="btn btn-primary" disabled={saving} onClick={saveRoles}>
-            Lưu vai trò
-          </button>
-        </div>
+        <form
+          className="role-assign-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveRoles();
+          }}
+        >
+          <div className="role-select-list">
+            {roles
+              .filter((r) => r.isActive)
+              .map((r) => (
+                <label key={r.id} className="role-select-row">
+                  <input
+                    type="checkbox"
+                    checked={roleIds.includes(r.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setRoleIds([...roleIds, r.id]);
+                      else setRoleIds(roleIds.filter((id) => id !== r.id));
+                    }}
+                  />
+                  <span className="role-select-body">
+                    <span className="role-select-head">
+                      <span className="role-select-name">{r.displayName}</span>
+                      <code className="role-select-code">{r.roleName}</code>
+                    </span>
+                    {r.description && <span className="role-select-desc">{r.description}</span>}
+                  </span>
+                  {(r.isSystemRole || r.bypassDataScope) && (
+                    <span className="role-select-badges">
+                      {r.isSystemRole && <span className="tag tag-muted">Hệ thống</span>}
+                      {r.bypassDataScope && <span className="tag">Bypass scope</span>}
+                    </span>
+                  )}
+                </label>
+              ))}
+          </div>
+          <div className="modal-footer">
+            <div className="modal-footer-actions">
+              <button type="button" className="btn btn-ghost" onClick={closeModal}>
+                Hủy
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Đang lưu...' : `Lưu vai trò (${roleIds.length})`}
+              </button>
+            </div>
+          </div>
+        </form>
       </Modal>
 
       <Modal
         title={`Đặt lại mật khẩu: ${selected?.fullName ?? ''}`}
+        subtitle="Mật khẩu mới có hiệu lực ngay khi lưu"
         open={mode === 'password'}
         onClose={closeModal}
       >
-        <label>
-          Mật khẩu mới (≥ 6 ký tự)
-          <input
-            type="password"
-            minLength={6}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-        </label>
-        <div className="form-actions">
-          <button type="button" className="btn" onClick={closeModal}>
-            Hủy
-          </button>
-          <button type="button" className="btn btn-primary" disabled={saving} onClick={savePassword}>
-            Đặt mật khẩu
-          </button>
-        </div>
+        <form
+          className="form-stack password-reset-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            savePassword();
+          }}
+        >
+          {selected && (
+            <div className="form-info-box">
+              <strong>{selected.employeeCode}</strong>
+              <span>{selected.email}</span>
+            </div>
+          )}
+
+          <label>
+            Mật khẩu mới
+            <div className="input-adorned">
+              <input
+                type={showResetPassword ? 'text' : 'password'}
+                minLength={6}
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                placeholder="Tối thiểu 6 ký tự"
+              />
+              <button
+                type="button"
+                className="input-adorned-btn"
+                onClick={() => setShowResetPassword((v) => !v)}
+                aria-label={showResetPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                {showResetPassword ? 'Ẩn' : 'Hiện'}
+              </button>
+            </div>
+            <span className="form-hint">Người dùng sẽ đăng nhập bằng mật khẩu mới ở lần tiếp theo.</span>
+          </label>
+
+          <div className="modal-footer">
+            <div className="modal-footer-actions">
+              <button type="button" className="btn btn-ghost" onClick={closeModal}>
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={saving || newPassword.length < 6}
+              >
+                {saving ? 'Đang lưu...' : 'Đặt mật khẩu'}
+              </button>
+            </div>
+          </div>
+        </form>
       </Modal>
 
       <Modal
@@ -549,16 +623,14 @@ export function UsersPage() {
         <div className="form-grid">
           <label>
             Phòng ban
-            <select
+            <Select
               value={addDeptForm.departmentId}
-              onChange={(e) => setAddDeptForm({ ...addDeptForm, departmentId: e.target.value })}
-            >
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.departmentCode} — {d.departmentName}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setAddDeptForm({ ...addDeptForm, departmentId: v })}
+              options={departments.map((d) => ({
+                value: d.id,
+                label: `${d.departmentCode} — ${d.departmentName}`,
+              }))}
+            />
           </label>
           <label>
             Từ ngày

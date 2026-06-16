@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { HttpError } from '../api/http';
 import { Alert } from '../components/ui/Alert';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 
 export function LoginPage() {
@@ -30,39 +31,64 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <div className="login-brand">
+      <aside className="login-hero">
+        <div className="login-hero-content">
           <span className="brand-logo lg">ERP</span>
-          <h1>Corporation HRM</h1>
-          <p>Đăng nhập để quản trị nhân sự, phòng ban, vai trò và cấp bậc</p>
+          <h1>Quản trị nhân sự & phân quyền tập trung</h1>
+          <p>
+            Nền tảng HRM nội bộ — quản lý nhân sự, phòng ban, vai trò, quyền hạn và thông báo realtime
+            trên một giao diện thống nhất.
+          </p>
+          <ul className="login-hero-features">
+            <li>Quản lý nhân sự & phòng ban</li>
+            <li>RBAC — vai trò & quyền chi tiết</li>
+            <li>Thông báo realtime qua SignalR</li>
+          </ul>
         </div>
-        {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
-        <form onSubmit={handleSubmit} className="login-form">
-          <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="username"
-            />
-          </label>
-          <label>
-            Mật khẩu
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </label>
-          <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
-            {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
-          </button>
-        </form>
-        <p className="login-hint">Tài khoản seed: admin@company.com / !Abc123 (mật khẩu chung)</p>
+      </aside>
+
+      <div className="login-panel">
+        <div className="login-card">
+          <div className="login-theme-row">
+            <ThemeToggle />
+          </div>
+          <div className="login-card-header">
+            <h2>Đăng nhập</h2>
+            <p>Nhập tài khoản để truy cập hệ thống</p>
+          </div>
+
+          {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
+
+          <form onSubmit={handleSubmit} className="login-form">
+            <label>
+              Email
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="username"
+                placeholder="admin@company.com"
+              />
+            </label>
+            <label>
+              Mật khẩu
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+              />
+            </label>
+            <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
+              {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            </button>
+          </form>
+
+          <p className="login-hint">Tài khoản seed: admin@company.com / !Abc123</p>
+        </div>
       </div>
     </div>
   );

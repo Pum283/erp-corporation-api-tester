@@ -1,11 +1,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { HttpError } from '../api/http';
 import { notificationEventTypesApi } from '../api/services';
+import { CanAccess } from '../components/auth/CanAccess';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
+import { P } from '../config/permissions';
 import { usePagination } from '../hooks/usePagination';
 import type { NotificationEventTypeDto } from '../types/entities';
 
@@ -118,9 +120,11 @@ export function NotificationEventTypesPage() {
         title="Loại thông báo"
         subtitle="Quản lý template nội dung thông báo (EventType)"
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            + Tạo loại mới
-          </button>
+          <CanAccess permission={P.SYSTEM_NOTIFICATION_EVENT_CREATE}>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              + Tạo loại mới
+            </button>
+          </CanAccess>
         }
       />
 
@@ -163,13 +167,17 @@ export function NotificationEventTypesPage() {
                       </Badge>
                     </td>
                     <td className="actions">
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}>
-                        Sửa
-                      </button>
-                      {item.isActive && (
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(item)}>
-                          Tắt
+                      <CanAccess permission={P.SYSTEM_NOTIFICATION_EVENT_UPDATE}>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}>
+                          Sửa
                         </button>
+                      </CanAccess>
+                      {item.isActive && (
+                        <CanAccess permission={P.SYSTEM_NOTIFICATION_EVENT_DELETE}>
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleDelete(item)}>
+                            Tắt
+                          </button>
+                        </CanAccess>
                       )}
                     </td>
                   </tr>

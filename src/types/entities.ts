@@ -29,6 +29,8 @@ export interface UserDto {
   status: UserStatus;
   isActive: boolean;
   roles: string[];
+  permissions: string[];
+  bypassDataScope: boolean;
 }
 
 export interface UserDepartmentDto {
@@ -163,5 +165,148 @@ export interface UnreadNotificationCountDto {
 
 export interface RealtimeNotificationPayload {
   notification: UserNotificationDto;
+  unreadCount: number;
+}
+
+// Tasks
+export type TaskType = 'Normal' | 'Recurring' | 'Project' | 'Onboarding' | 'Offboarding' | 'Training';
+export type TaskStatus = 'ToDo' | 'InProgress' | 'Review' | 'Done' | 'Cancelled' | 'Overdue';
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+export type RecurringPattern = 'None' | 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly';
+export type TaskActivityAction = 'Created' | 'StatusChanged' | 'ProgressUpdated' | 'Assigned' | 'Unassigned' | 'DueDateChanged' | 'CommentAdded' | 'Completed' | 'Cancelled' | 'SubtaskAdded';
+
+export interface TaskAssigneeDto {
+  userID: string;
+  fullName: string;
+  employeeCode: string;
+  assignedAt: string;
+  assignedBy: string;
+  isPrimaryAssignee: boolean;
+}
+
+export interface TaskFollowerDto {
+  userID: string;
+  fullName: string;
+  employeeCode: string;
+  followedAt: string;
+}
+
+export interface TaskCommentDto {
+  id: string;
+  taskID: string;
+  userID: string;
+  fullName: string;
+  avatarUrl?: string | null;
+  content: string;
+  parentCommentID?: string | null;
+  createdAt: string;
+  replies: TaskCommentDto[];
+}
+
+export interface TaskActivityLogDto {
+  id: string;
+  taskID: string;
+  userID: string;
+  fullName: string;
+  action: TaskActivityAction;
+  oldValue?: string | null;
+  newValue?: string | null;
+  createdAt: string;
+}
+
+export interface TaskDto {
+  id: string;
+  taskCode: string;
+  title: string;
+  description?: string | null;
+  taskType: TaskType;
+  status: TaskStatus;
+  priority: TaskPriority;
+  progress: number;
+  startDate?: string | null;
+  dueDate?: string | null;
+  completedDate?: string | null;
+  estimatedHours?: number | null;
+  actualHours?: number | null;
+  isRecurring: boolean;
+  recurringPattern?: RecurringPattern | null;
+  parentTaskID?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  assignees: TaskAssigneeDto[];
+  followers: TaskFollowerDto[];
+  comments: TaskCommentDto[];
+  activityLogs: TaskActivityLogDto[];
+  kpiIds: string[];
+  lmsCourseIds: string[];
+  subtasks: TaskDto[];
+}
+
+// Chat
+export type ConversationType = 'Direct' | 'Group' | 'Channel';
+export type RoleInConversation = 'Admin' | 'Member' | 'Viewer';
+export type MessageType = 'Text' | 'Image' | 'Video' | 'File' | 'Voice' | 'TaskLink' | 'System' | 'Poll';
+
+export interface ConversationMemberDto {
+  userID: string;
+  fullName: string;
+  employeeCode: string;
+  avatarUrl?: string | null;
+  roleInConversation?: RoleInConversation | null;
+  joinedAt: string;
+  isMuted: boolean;
+  isActive: boolean;
+}
+
+export interface MessageAttachmentDto {
+  id: string;
+  messageID: string;
+  fileName: string;
+  fileURL: string;
+  fileType: string;
+  fileSize: number;
+  thumbnailURL?: string | null;
+  uploadedAt: string;
+}
+
+export interface MessageReactionDto {
+  id: string;
+  messageID: string;
+  userID: string;
+  fullName: string;
+  reactionType: string;
+}
+
+export interface MessageDto {
+  id: string;
+  conversationID: string;
+  userID: string;
+  fullName: string;
+  avatarUrl?: string | null;
+  content?: string | null;
+  messageType: MessageType;
+  parentMessageID?: string | null;
+  isEdited: boolean;
+  isDeleted: boolean;
+  sentAt: string;
+  editedAt?: string | null;
+  attachments: MessageAttachmentDto[];
+  reactions: MessageReactionDto[];
+  linkedTaskId?: string | null;
+}
+
+export interface ConversationDto {
+  id: string;
+  conversationType: ConversationType;
+  title?: string | null;
+  description?: string | null;
+  isPrivate: boolean;
+  isArchived: boolean;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  members: ConversationMemberDto[];
+  lastMessage?: MessageDto | null;
   unreadCount: number;
 }

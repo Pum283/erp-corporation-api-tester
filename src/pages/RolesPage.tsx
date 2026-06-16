@@ -1,12 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { HttpError } from '../api/http';
 import { rolesApi } from '../api/services';
+import { CanAccess } from '../components/auth/CanAccess';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
+import { PermissionPicker } from '../components/ui/PermissionPicker';
 import { useReferenceData } from '../context/ReferenceDataContext';
+import { P } from '../config/permissions';
 import { usePagination } from '../hooks/usePagination';
 import type { RoleDto } from '../types/entities';
 
@@ -139,24 +142,17 @@ export function RolesPage() {
     }
   }
 
-  function togglePerm(id: string) {
-    setSelectedPermIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   return (
     <div>
       <PageHeader
         title="Vai trò"
         subtitle={`${totalCount} vai trò · ${permissions.length} quyền trong hệ thống`}
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            + Thêm vai trò
-          </button>
+          <CanAccess permission={P.SYSTEM_ROLE_CREATE}>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              + Thêm vai trò
+            </button>
+          </CanAccess>
         }
       />
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
@@ -191,20 +187,26 @@ export function RolesPage() {
                     <Badge active={r.isActive}>{r.isActive ? 'Hoạt động' : 'Ngừng'}</Badge>
                   </td>
                   <td className="actions-cell">
-                    <button type="button" className="btn btn-sm" onClick={() => openPermissions(r)}>
-                      Quyền
-                    </button>
-                    <button type="button" className="btn btn-sm" onClick={() => openEdit(r)}>
-                      Sửa
-                    </button>
-                    {!r.isSystemRole && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(r)}
-                      >
-                        Xóa
+                    <CanAccess permission={P.SYSTEM_ROLE_UPDATE}>
+                      <button type="button" className="btn btn-sm" onClick={() => openPermissions(r)}>
+                        Quyền
                       </button>
+                    </CanAccess>
+                    <CanAccess permission={P.SYSTEM_ROLE_UPDATE}>
+                      <button type="button" className="btn btn-sm" onClick={() => openEdit(r)}>
+                        Sửa
+                      </button>
+                    </CanAccess>
+                    {!r.isSystemRole && (
+                      <CanAccess permission={P.SYSTEM_ROLE_UPDATE}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(r)}
+                        >
+                          Xóa
+                        </button>
+                      </CanAccess>
                     )}
                   </td>
                 </tr>
@@ -323,32 +325,32 @@ export function RolesPage() {
 
       <Modal
         title={`Phân quyền: ${permRole?.displayName ?? ''}`}
+        subtitle={`${selectedPermIds.size} / ${permissions.length} quyền đã chọn`}
         open={permOpen}
         onClose={() => setPermOpen(false)}
-        wide
+        size="xl"
+        bodyClassName="modal-body-no-scroll"
       >
-        <div className="perm-grid">
-          {permissions.map((p) => (
-            <label key={p.id} className="perm-item">
-              <input
-                type="checkbox"
-                checked={selectedPermIds.has(p.id)}
-                onChange={() => togglePerm(p.id)}
-              />
-              <div>
-                <code>{p.permissionCode}</code>
-                <small>{p.permissionName}</small>
-              </div>
-            </label>
-          ))}
-        </div>
-        <div className="form-actions">
-          <button type="button" className="btn" onClick={() => setPermOpen(false)}>
-            Hủy
-          </button>
-          <button type="button" className="btn btn-primary" disabled={saving} onClick={savePermissions}>
-            Lưu quyền ({selectedPermIds.size})
-          </button>
+        <PermissionPicker
+          permissions={permissions}
+          selectedIds={selectedPermIds}
+          onChange={setSelectedPermIds}
+          resetKey={permRole?.id ?? ''}
+        />
+        <div className="modal-footer">
+          <div className="modal-footer-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => setPermOpen(false)}>
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={saving}
+              onClick={savePermissions}
+            >
+              {saving ? 'Đang lưu...' : `Lưu quyền (${selectedPermIds.size})`}
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

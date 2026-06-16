@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { authApi } from '../api/services';
 import { clearAuth, getRefreshToken, getStoredUser, getToken, saveAuth } from '../lib/storage';
+import { normalizeUser } from '../lib/normalizeUser';
 import type { UserDto } from '../types/entities';
 
 interface AuthContextValue {
@@ -32,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const profile = await authApi.me();
-    setUser(profile);
+    setUser(normalizeUser(profile));
   }, []);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       employeeCode: res.employeeCode,
     });
     const profile = await authApi.me();
-    setUser(profile);
+    setUser(normalizeUser(profile));
   }, []);
 
   const logout = useCallback(async () => {
