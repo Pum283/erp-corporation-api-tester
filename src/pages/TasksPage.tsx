@@ -1,9 +1,90 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { tasksApi, usersApi } from '../api/services';
 import type { TaskDto, UserDto, TaskCommentDto } from '../types/entities';
+import { useAuth } from '../context/AuthContext';
 import './TasksPage.css';
 
+export const statusLabels: Record<string, string> = {
+  ToDo: 'Việc cần làm',
+  InProgress: 'Đang thực hiện',
+  Review: 'Đang xem xét',
+  Done: 'Đã hoàn thành',
+  Cancelled: 'Đã hủy',
+};
+
+const priorityLabels: Record<string, string> = {
+  Low: 'Thấp',
+  Medium: 'Trung bình',
+  High: 'Cao',
+  Urgent: 'Khẩn cấp',
+};
+
+const formatTaskDate = (date?: string | null) =>
+  date ? new Date(date).toLocaleDateString('vi-VN') : 'Chưa có';
+
+const formatCommentTime = (date: string) => {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diffSec = Math.floor((now - then) / 1000);
+  if (diffSec < 60) return 'Vừa xong';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} phút`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} giờ`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay} ngày`;
+  return new Date(date).toLocaleDateString('vi-VN');
+};
+
+const handleCommentKeyDown = (
+  e: React.KeyboardEvent<HTMLTextAreaElement>,
+  onSubmit: (e: React.FormEvent) => void,
+) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    onSubmit(e);
+  }
+};
+
+const sortByCreatedAtAsc = <T extends { createdAt: string }>(items: T[]) =>
+  [...items].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+const sortCommentsTree = (comments: TaskCommentDto[]): TaskCommentDto[] =>
+  sortByCreatedAtAsc(comments).map((c) => ({
+    ...c,
+    replies: sortCommentsTree(c.replies ?? []),
+  }));
+
+const prepareCommentsForDisplay = (comments: TaskCommentDto[]): TaskCommentDto[] => {
+  if (comments.length === 0) return [];
+
+  const hasNestedReplies = comments.some((c) => (c.replies?.length ?? 0) > 0);
+  if (hasNestedReplies) {
+    return sortCommentsTree(comments.filter((c) => !c.parentCommentID));
+  }
+
+  const sorted = sortByCreatedAtAsc(comments);
+  const map = new Map<string, TaskCommentDto>();
+  sorted.forEach((c) => map.set(c.id, { ...c, replies: [] }));
+
+  const roots: TaskCommentDto[] = [];
+  sorted.forEach((c) => {
+    const node = map.get(c.id)!;
+    if (c.parentCommentID && map.has(c.parentCommentID)) {
+      map.get(c.parentCommentID)!.replies.push(node);
+    } else if (!c.parentCommentID) {
+      roots.push(node);
+    }
+  });
+
+  return sortCommentsTree(roots);
+};
+
+const getInitials = (name: string) =>
+  name.split(' ').filter(Boolean).slice(-2).map((w) => w[0]).join('').toUpperCase();
+
 export function TasksPage() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [viewMode, setViewMode] = useState<'Kanban' | 'List'>('Kanban');
@@ -36,7 +117,21 @@ export function TasksPage() {
 
   // Comment state
   const [commentText, setCommentText] = useState('');
-  const [replyingComment, setReplyingComment] = useState<TaskCommentDto | null>(null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const commentsScrollRef = useRef<HTMLDivElement>(null);
+  const logsScrollRef = useRef<HTMLDivElement>(null);
+
+  const displayedActivityLogs = useMemo(
+    () => (selectedTask ? sortByCreatedAtAsc(selectedTask.activityLogs) : []),
+    [selectedTask?.activityLogs, selectedTask?.id],
+  );
+
+  const displayedComments = useMemo(
+    () => (selectedTask ? prepareCommentsForDisplay(selectedTask.comments) : []),
+    [selectedTask?.comments, selectedTask?.id],
+  );
 
   // Load lists
   useEffect(() => {
@@ -44,19 +139,68 @@ export function TasksPage() {
     usersApi.listAll().then((list) => setUsers(list));
   }, [search, statusFilter, priorityFilter, assigneeFilter]);
 
+  useEffect(() => {
+    if (!selectedTask) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (replyingToId) {
+          setReplyingToId(null);
+          setReplyText('');
+        } else {
+          setSelectedTask(null);
+        }
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [selectedTask, replyingToId]);
+
+  useEffect(() => {
+    if (activeTab !== 'Comments') {
+      setReplyingToId(null);
+      setReplyText('');
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (replyingToId) {
+      replyInputRef.current?.focus();
+    }
+  }, [replyingToId]);
+
+  useEffect(() => {
+    if (activeTab !== 'Comments') return;
+    const el = commentsScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [activeTab, displayedComments]);
+
+  useEffect(() => {
+    if (activeTab !== 'Logs') return;
+    const el = logsScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [activeTab, displayedActivityLogs]);
+
   const loadTasks = () => {
     tasksApi.list({
       search: search || undefined,
       status: statusFilter || undefined,
       priority: priorityFilter || undefined,
       assigneeId: assigneeFilter || undefined,
-    }).then((res) => {
+    }).then(async (res) => {
       setTasks(res.items);
-      // If a task is selected, refresh its details
       if (selectedTask) {
-        const updated = res.items.find(t => t.id === selectedTask.id);
-        if (updated) {
-          tasksApi.get(updated.id).then((detailed) => setSelectedTask(detailed));
+        try {
+          const detailed = await tasksApi.get(selectedTask.id);
+          setSelectedTask(detailed);
+        } catch {
+          const updated = res.items.find(t => t.id === selectedTask.id);
+          if (updated) setSelectedTask(updated);
         }
       }
     });
@@ -166,17 +310,17 @@ export function TasksPage() {
     if (!newSubtaskTitle.trim() || !selectedTask) return;
 
     await tasksApi.create({
-      title: newSubtaskTitle,
+      title: newSubtaskTitle.trim(),
       description: '',
       taskType: 'Normal',
       priority: selectedTask.priority,
-      startDate: null,
-      dueDate: null,
+      startDate: selectedTask.startDate ?? null,
+      dueDate: selectedTask.dueDate ?? null,
       estimatedHours: 0,
       isRecurring: false,
       parentTaskID: selectedTask.id,
-      assigneeIds: [],
-      primaryAssigneeId: null,
+      assigneeIds: selectedTask.assignees.map((a) => a.userID),
+      primaryAssigneeId: selectedTask.assignees.find((a) => a.isPrimaryAssignee)?.userID ?? null,
       followerIds: [],
       kpiIds: [],
       lmsCourseIds: [],
@@ -186,19 +330,65 @@ export function TasksPage() {
     loadTasks();
   };
 
+  const handleToggleSubtask = async (sub: TaskDto) => {
+    if (!selectedTask) return;
+    const markDone = sub.status !== 'Done';
+    await tasksApi.update(sub.id, {
+      title: sub.title,
+      description: sub.description,
+      taskType: sub.taskType,
+      status: markDone ? 'Done' : 'ToDo',
+      priority: sub.priority,
+      progress: markDone ? 100 : 0,
+      startDate: sub.startDate,
+      dueDate: sub.dueDate,
+      estimatedHours: sub.estimatedHours,
+      actualHours: sub.actualHours,
+      isRecurring: sub.isRecurring,
+      recurringPattern: sub.recurringPattern,
+      parentTaskID: sub.parentTaskID,
+    });
+    loadTasks();
+  };
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim() || !selectedTask) return;
 
     await tasksApi.addComment(selectedTask.id, {
       content: commentText,
-      parentCommentID: replyingComment?.id || null,
+      parentCommentID: null,
     });
 
     setCommentText('');
-    setReplyingComment(null);
     loadTasks();
   };
+
+  const handleSubmitReply = async (e: React.FormEvent, parentId: string) => {
+    e.preventDefault();
+    if (!replyText.trim() || !selectedTask) return;
+
+    await tasksApi.addComment(selectedTask.id, {
+      content: replyText,
+      parentCommentID: parentId,
+    });
+
+    setReplyText('');
+    setReplyingToId(null);
+    loadTasks();
+  };
+
+  const toggleReply = (comment: TaskCommentDto) => {
+    if (replyingToId === comment.id) {
+      setReplyingToId(null);
+      setReplyText('');
+    } else {
+      setReplyingToId(comment.id);
+      setReplyText('');
+    }
+  };
+
+  const currentUserInitials = user?.fullName ? getInitials(user.fullName) : '?';
 
   const handleRemoveTask = async (id: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa công việc này không?')) return;
@@ -207,36 +397,79 @@ export function TasksPage() {
     loadTasks();
   };
 
-  // Group columns for Kanban
+  // Group columns for Kanban — chỉ hiển thị task gốc, không hiển thị subtask
+  const rootTasks = useMemo(() => tasks.filter((t) => !t.parentTaskID), [tasks]);
+
   const getTasksByStatus = (status: 'ToDo' | 'InProgress' | 'Review' | 'Done' | 'Cancelled') => {
-    return tasks.filter(t => t.status === status);
+    return rootTasks.filter(t => t.status === status);
   };
 
-  const renderComments = (commentsList: TaskCommentDto[]) => {
+  const getSubtaskStats = (task: TaskDto) => {
+    const total = task.subtasks.length;
+    const done = task.subtasks.filter((s) => s.status === 'Done').length;
+    return { total, done };
+  };
+
+  const renderComments = (commentsList: TaskCommentDto[], depth = 0) => {
     return (
-      <div className="comments-list">
-        {commentsList.map((c) => (
-          <div key={c.id} className="comment-node-container" style={{ margin: '8px 0' }}>
-            <div className="comment-node">
-              <div className="chat-avatar" style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}>
-                {c.fullName.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="comment-body">
-                <div className="comment-author">{c.fullName}</div>
-                <div className="comment-content">{c.content}</div>
-                <div className="comment-meta">
-                  <span>{new Date(c.createdAt).toLocaleString()}</span>
-                  <button onClick={() => setReplyingComment(c)}>Trả lời</button>
+      <div className={`fb-comment-list ${depth > 0 ? 'is-nested' : ''}`}>
+        {commentsList.map((c) => {
+          const isReplying = replyingToId === c.id;
+          return (
+            <div key={c.id} className="fb-comment">
+              <div className="fb-comment-row">
+                <div className={`fb-avatar ${depth > 0 ? 'is-sm' : ''}`}>{getInitials(c.fullName)}</div>
+                <div className="fb-comment-main">
+                  <div className="fb-bubble">
+                    <span className="fb-bubble-name">{c.fullName}</span>
+                    <span className="fb-bubble-text">{c.content}</span>
+                  </div>
+                  <div className="fb-comment-actions">
+                    <time className="fb-action-time">{formatCommentTime(c.createdAt)}</time>
+                    <button
+                      type="button"
+                      className={`fb-action-btn ${isReplying ? 'is-active' : ''}`}
+                      onClick={() => toggleReply(c)}
+                    >
+                      Trả lời
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {isReplying && (
+                <form
+                  className="fb-reply-composer"
+                  onSubmit={(e) => handleSubmitReply(e, c.id)}
+                >
+                  <div className="fb-avatar is-sm">{currentUserInitials}</div>
+                  <div className="fb-input-pill">
+                    <textarea
+                      ref={replyInputRef}
+                      className="fb-input-field"
+                      placeholder={`Trả lời ${c.fullName}...`}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      rows={1}
+                      onKeyDown={(e) => handleCommentKeyDown(e, (ev) => handleSubmitReply(ev, c.id))}
+                    />
+                    {replyText.trim() && (
+                      <button type="submit" className="fb-send-btn" title="Gửi" aria-label="Gửi">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )}
+
+              {c.replies && c.replies.length > 0 && (
+                <div className="fb-replies">{renderComments(c.replies, depth + 1)}</div>
+              )}
             </div>
-            {c.replies && c.replies.length > 0 && (
-              <div className="comment-replies">
-                {renderComments(c.replies)}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -296,22 +529,15 @@ export function TasksPage() {
         <div className="kanban-board">
           {(['ToDo', 'InProgress', 'Review', 'Done', 'Cancelled'] as const).map((col) => {
             const colTasks = getTasksByStatus(col);
-            const colLabels = {
-              ToDo: 'Việc cần làm',
-              InProgress: 'Đang thực hiện',
-              Review: 'Đang xem xét',
-              Done: 'Đã hoàn thành',
-              Cancelled: 'Đã hủy',
-            };
             return (
               <div
                 key={col}
-                className="kanban-column"
+                className={`kanban-column ${col}`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, col)}
               >
                 <div className="kanban-column-header">
-                  <span>{colLabels[col]}</span>
+                  <span>{statusLabels[col]}</span>
                   <span className="column-count">{colTasks.length}</span>
                 </div>
                 <div className="kanban-cards-container">
@@ -329,6 +555,11 @@ export function TasksPage() {
                       </div>
                       <div className="task-card-title">{t.title}</div>
                       {t.description && <div className="task-card-desc">{t.description}</div>}
+                      {getSubtaskStats(t).total > 0 && (
+                        <div className="task-card-subtasks">
+                          ☑ {getSubtaskStats(t).done}/{getSubtaskStats(t).total} subtasks
+                        </div>
+                      )}
                       
                       <div className="task-card-footer">
                         <div className="task-due-date">
@@ -364,11 +595,11 @@ export function TasksPage() {
               </tr>
             </thead>
             <tbody>
-              {tasks.map((t) => (
+              {rootTasks.map((t) => (
                 <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => handleSelectTask(t)}>
                   <td><span className="task-code">{t.taskCode}</span></td>
                   <td style={{ fontWeight: 600 }}>{t.title}</td>
-                  <td>{t.status}</td>
+                  <td><span className={`task-status-badge ${t.status}`}>{statusLabels[t.status] || t.status}</span></td>
                   <td><span className={`task-priority-badge ${t.priority}`}>{t.priority}</span></td>
                   <td>
                     {t.assignees.map(a => a.fullName).join(', ') || 'N/A'}
@@ -486,147 +717,367 @@ export function TasksPage() {
         </div>
       )}
 
-      {/* 2. Task Details Modal */}
+      {/* Task Details Modal */}
       {selectedTask && (
-        <div className="modal-backdrop">
-          <div className="chat-modal" style={{ width: '760px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <span className="task-code">{selectedTask.taskCode}</span>
-                <h3 style={{ margin: '8px 0 0 0' }}>{selectedTask.title}</h3>
-              </div>
-              <button className="chat-msg-opt-btn" style={{ fontSize: '1.2rem' }} onClick={() => setSelectedTask(null)}>✕</button>
-            </div>
+        <div className="task-modal-backdrop" onClick={() => setSelectedTask(null)}>
+          <div
+            className="task-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`task-modal-accent task-modal-accent--${selectedTask.status}`} />
 
-            <div className="modal-tabs">
-              <button className={`tab-btn ${activeTab === 'Details' ? 'active' : ''}`} onClick={() => setActiveTab('Details')}>Chi tiết</button>
-              <button className={`tab-btn ${activeTab === 'Subtasks' ? 'active' : ''}`} onClick={() => setActiveTab('Subtasks')}>Subtasks ({selectedTask.subtasks.length})</button>
-              <button className={`tab-btn ${activeTab === 'Logs' ? 'active' : ''}`} onClick={() => setActiveTab('Logs')}>Lịch sử</button>
-              <button className={`tab-btn ${activeTab === 'Comments' ? 'active' : ''}`} onClick={() => setActiveTab('Comments')}>Bình luận ({selectedTask.comments.length})</button>
-            </div>
-
-            {/* TAB: Details */}
-            {activeTab === 'Details' && (
-              <div className="task-detail-grid">
-                <div className="task-detail-left">
-                  <div>
-                    <strong>Mô tả:</strong>
-                    <p style={{ whiteSpace: 'pre-wrap', marginTop: '6px' }}>{selectedTask.description || 'Không có mô tả chi tiết.'}</p>
+            <header className="task-modal-header">
+              <div className="task-modal-header-content">
+                <div className="task-modal-meta-row">
+                  <span className="task-modal-code">{selectedTask.taskCode}</span>
+                  <span className={`task-modal-priority-chip ${selectedTask.priority}`}>
+                    {priorityLabels[selectedTask.priority] || selectedTask.priority}
+                  </span>
+                </div>
+                <h2 id="task-modal-title" className="task-modal-title">{selectedTask.title}</h2>
+                <div className="task-modal-progress-wrap">
+                  <div className="task-modal-progress-label">
+                    <span>Tiến độ</span>
+                    <strong>{selectedTask.progress}%</strong>
                   </div>
-                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                    {selectedTask.kpiIds.length > 0 && (
-                      <div className="kpi-link-badge">
-                        🎯 Đóng góp vào KPI ({selectedTask.kpiIds.length})
-                      </div>
-                    )}
-                    {selectedTask.lmsCourseIds.length > 0 && (
-                      <div className="lms-link-badge">
-                        🎓 Yêu cầu học LMS ({selectedTask.lmsCourseIds.length})
-                      </div>
-                    )}
+                  <div className="task-modal-progress-track">
+                    <div
+                      className={`task-modal-progress-fill task-modal-progress-fill--${selectedTask.status}`}
+                      style={{ width: `${Math.min(100, Math.max(0, selectedTask.progress))}%` }}
+                    />
                   </div>
                 </div>
+              </div>
+              <button
+                type="button"
+                className="task-modal-close"
+                onClick={() => setSelectedTask(null)}
+                title="Đóng"
+                aria-label="Đóng"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </header>
 
-                <div className="task-detail-right">
-                  <div>
-                    <strong>Trạng thái:</strong>
-                    <select className="form-control" style={{ marginTop: '4px' }} value={selectedTask.status} onChange={(e: any) => handleUpdateStatusInModal(e.target.value)}>
-                      <option value="ToDo">Việc cần làm</option>
-                      <option value="InProgress">Đang thực hiện</option>
-                      <option value="Review">Đang xem xét</option>
-                      <option value="Done">Đã hoàn thành</option>
-                      <option value="Cancelled">Đã hủy</option>
-                    </select>
+            <nav className="task-modal-tabs" aria-label="Tab công việc">
+              {([
+                { id: 'Details' as const, label: 'Chi tiết', count: null },
+                { id: 'Subtasks' as const, label: 'Subtasks', count: selectedTask.subtasks.length },
+                { id: 'Logs' as const, label: 'Lịch sử', count: selectedTask.activityLogs.length },
+                { id: 'Comments' as const, label: 'Bình luận', count: selectedTask.comments.length },
+              ]).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`task-modal-tab ${activeTab === tab.id ? 'is-active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {tab.label}
+                  {tab.count !== null && (
+                    <span className="task-modal-tab-count">{tab.count}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
+
+            <div className="task-modal-body">
+              {activeTab === 'Details' && (
+                <div className="task-modal-details">
+                  <div className="task-modal-main">
+                    <section className="task-modal-panel">
+                      <div className="task-modal-panel-head">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                        </svg>
+                        <span>Mô tả chi tiết</span>
+                      </div>
+                      <p className="task-modal-description">
+                        {selectedTask.description || 'Không có mô tả chi tiết.'}
+                      </p>
+                    </section>
+
+                    {(selectedTask.kpiIds.length > 0 || selectedTask.lmsCourseIds.length > 0) && (
+                      <section className="task-modal-panel task-modal-links">
+                        <div className="task-modal-panel-head">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                          </svg>
+                          <span>Liên kết</span>
+                        </div>
+                        <div className="task-link-badges-container">
+                          {selectedTask.kpiIds.map((_, idx) => (
+                            <div key={`kpi-${idx}`} className="kpi-link-badge">Đóng góp vào KPI</div>
+                          ))}
+                          {selectedTask.lmsCourseIds.map((_, idx) => (
+                            <div key={`lms-${idx}`} className="lms-link-badge">Yêu cầu học LMS</div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {selectedTask.followers.length > 0 && (
+                      <section className="task-modal-panel">
+                        <div className="task-modal-panel-head">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                          </svg>
+                          <span>Người theo dõi ({selectedTask.followers.length})</span>
+                        </div>
+                        <div className="task-modal-followers">
+                          {selectedTask.followers.map((f, i) => (
+                            <span key={i} className="task-modal-follower-chip">{f.fullName}</span>
+                          ))}
+                        </div>
+                      </section>
+                    )}
                   </div>
-                  <div>
-                    <strong>Mức ưu tiên:</strong>
-                    <div className={`task-priority-badge ${selectedTask.priority}`} style={{ display: 'inline-block', marginTop: '4px' }}>
-                      {selectedTask.priority}
+
+                  <aside className="task-modal-sidebar">
+                    <div className="task-modal-field">
+                      <label className="task-modal-field-label">Trạng thái</label>
+                      <select
+                        className={`task-modal-select task-status-select ${selectedTask.status}`}
+                        value={selectedTask.status}
+                        onChange={(e) => handleUpdateStatusInModal(e.target.value as 'ToDo' | 'InProgress' | 'Review' | 'Done' | 'Cancelled')}
+                      >
+                        <option value="ToDo">Việc cần làm</option>
+                        <option value="InProgress">Đang thực hiện</option>
+                        <option value="Review">Đang xem xét</option>
+                        <option value="Done">Đã hoàn thành</option>
+                        <option value="Cancelled">Đã hủy</option>
+                      </select>
                     </div>
-                  </div>
-                  <div>
-                    <strong>Thời gian:</strong>
-                    <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                      Bắt đầu: {selectedTask.startDate ? new Date(selectedTask.startDate).toLocaleDateString() : 'N/A'}<br />
-                      Hạn chót: {selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : 'N/A'}
+
+                    <div className="task-modal-field">
+                      <label className="task-modal-field-label">Mức ưu tiên</label>
+                      <div className={`task-modal-priority-display ${selectedTask.priority}`}>
+                        {priorityLabels[selectedTask.priority] || selectedTask.priority}
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <strong>Người thực hiện:</strong>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                      {selectedTask.assignees.map((a, i) => (
-                        <span key={i} style={{ fontSize: '0.85rem' }}>
-                          👤 {a.fullName} {a.isPrimaryAssignee && '⭐'}
-                        </span>
-                      ))}
+
+                    <div className="task-modal-field">
+                      <label className="task-modal-field-label">Thời gian</label>
+                      <div className="task-modal-info-card">
+                        <div className="task-modal-info-row">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                          </svg>
+                          <span>Bắt đầu: <strong>{formatTaskDate(selectedTask.startDate)}</strong></span>
+                        </div>
+                        <div className="task-modal-info-row">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          <span>Hạn chót: <strong>{formatTaskDate(selectedTask.dueDate)}</strong></span>
+                        </div>
+                        {selectedTask.estimatedHours != null && selectedTask.estimatedHours > 0 && (
+                          <div className="task-modal-info-row">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                            </svg>
+                            <span>Ước tính: <strong>{selectedTask.estimatedHours}h</strong></span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ marginTop: '12px' }}>
-                    <button className="btn-chat-action" style={{ width: '100%', borderColor: 'var(--danger-border)', color: 'var(--danger)' }} onClick={() => handleRemoveTask(selectedTask.id)}>
+
+                    <div className="task-modal-field">
+                      <label className="task-modal-field-label">Người thực hiện</label>
+                      <div className="task-modal-assignees">
+                        {selectedTask.assignees.length === 0 ? (
+                          <p className="task-modal-empty-inline">Chưa phân công</p>
+                        ) : (
+                          selectedTask.assignees.map((a, i) => (
+                            <div key={i} className="task-modal-assignee">
+                              <div className="task-modal-assignee-avatar">{getInitials(a.fullName)}</div>
+                              <div className="task-modal-assignee-body">
+                                <span className="task-modal-assignee-name">{a.fullName}</span>
+                                {a.isPrimaryAssignee && (
+                                  <span className="task-modal-primary-badge">Chính</span>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="task-modal-delete-btn"
+                      onClick={() => handleRemoveTask(selectedTask.id)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
                       Xóa công việc
                     </button>
-                  </div>
+                  </aside>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* TAB: Subtasks */}
-            {activeTab === 'Subtasks' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <form onSubmit={handleAddSubtask} style={{ display: 'flex', gap: '12px' }}>
-                  <input type="text" className="form-control" style={{ flex: 1 }} placeholder="Tên subtask mới..." value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)} />
-                  <button type="submit" className="btn-primary">Thêm</button>
-                </form>
-
-                <div className="subtasks-list">
-                  {selectedTask.subtasks.map((sub) => (
-                    <div key={sub.id} className="subtask-item">
-                      <span style={{ textDecoration: sub.status === 'Done' ? 'line-through' : 'none' }}>
-                        [{sub.taskCode}] {sub.title}
+              {activeTab === 'Subtasks' && (
+                <div className="task-modal-subtasks">
+                  {selectedTask.subtasks.length > 0 && (
+                    <div className="task-modal-subtask-summary">
+                      <span>
+                        {selectedTask.subtasks.filter((s) => s.status === 'Done').length}/{selectedTask.subtasks.length} hoàn thành
                       </span>
-                      <span>{sub.status}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* TAB: Logs */}
-            {activeTab === 'Logs' && (
-              <div className="activity-log-list">
-                {selectedTask.activityLogs.map((log) => (
-                  <div key={log.id} className="activity-log-item">
-                    <div>
-                      <strong>{log.fullName}</strong> {log.action === 'Created' && 'đã tạo công việc'}
-                      {log.action === 'StatusChanged' && `đã đổi trạng thái từ "${log.oldValue}" sang "${log.newValue}"`}
-                      {log.action === 'ProgressUpdated' && `đã cập nhật tiến độ sang ${log.newValue}%`}
-                      {log.action === 'DueDateChanged' && `đã gia hạn/đổi deadline từ "${log.oldValue}" thành "${log.newValue}"`}
-                      {log.action === 'CommentAdded' && `đã thêm bình luận: "${log.newValue}"`}
-                      {log.action === 'Completed' && 'đã hoàn thành công việc'}
-                    </div>
-                    <span className="activity-log-time">{new Date(log.createdAt).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* TAB: Comments */}
-            {activeTab === 'Comments' && (
-              <div>
-                <form onSubmit={handleAddComment} className="comment-editor">
-                  {replyingComment && (
-                    <div className="reply-preview">
-                      <span>Trả lời bình luận của <strong>{replyingComment.fullName}</strong>: "{replyingComment.content}"</span>
-                      <button type="button" className="chat-msg-opt-btn" onClick={() => setReplyingComment(null)}>✕</button>
+                      <div className="task-modal-subtask-summary-bar">
+                        <div
+                          className="task-modal-subtask-summary-fill"
+                          style={{
+                            width: `${Math.round(
+                              (selectedTask.subtasks.filter((s) => s.status === 'Done').length /
+                                selectedTask.subtasks.length) *
+                                100,
+                            )}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
-                  <textarea className="comment-input" placeholder="Viết bình luận..." value={commentText} onChange={(e) => setCommentText(e.target.value)} />
-                  <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-end' }}>Gửi bình luận</button>
-                </form>
 
-                {renderComments(selectedTask.comments)}
-              </div>
-            )}
+                  <form onSubmit={handleAddSubtask} className="task-modal-subtask-form">
+                    <input
+                      type="text"
+                      placeholder="Thêm subtask mới..."
+                      value={newSubtaskTitle}
+                      onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                    />
+                    <button type="submit" className="btn-primary" disabled={!newSubtaskTitle.trim()}>
+                      Thêm
+                    </button>
+                  </form>
+
+                  {selectedTask.subtasks.length === 0 ? (
+                    <div className="task-modal-empty">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                      </svg>
+                      <p>Chưa có subtask nào</p>
+                      <span>Thêm subtask để chia nhỏ công việc</span>
+                    </div>
+                  ) : (
+                    <div className="task-modal-subtask-list">
+                      {selectedTask.subtasks.map((sub) => (
+                        <div key={sub.id} className={`task-modal-subtask-item ${sub.status === 'Done' ? 'is-done' : ''}`}>
+                          <label className="task-modal-subtask-check">
+                            <input
+                              type="checkbox"
+                              checked={sub.status === 'Done'}
+                              onChange={() => handleToggleSubtask(sub)}
+                            />
+                          </label>
+                          <div className="task-modal-subtask-content">
+                            <span className="task-modal-subtask-title">{sub.title}</span>
+                          </div>
+                          <span className={`task-status-badge ${sub.status}`}>
+                            {statusLabels[sub.status] || sub.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'Logs' && (
+                <div className="task-modal-logs">
+                  {selectedTask.activityLogs.length === 0 ? (
+                    <div className="task-modal-empty">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      <p>Chưa có lịch sử hoạt động</p>
+                      <span>Các thay đổi sẽ hiển thị tại đây</span>
+                    </div>
+                  ) : (
+                    <div className="task-modal-timeline" ref={logsScrollRef}>
+                      {displayedActivityLogs.map((log) => (
+                        <div key={log.id} className="task-modal-timeline-item">
+                          <div className="task-modal-timeline-dot" />
+                          <div className="task-modal-timeline-card">
+                            <p className="task-modal-timeline-text">
+                              <strong>{log.fullName}</strong>
+                              {log.action === 'Created' && ' đã tạo công việc'}
+                              {log.action === 'StatusChanged' && ` đã đổi trạng thái từ "${log.oldValue}" sang "${log.newValue}"`}
+                              {log.action === 'ProgressUpdated' && ` đã cập nhật tiến độ sang ${log.newValue}%`}
+                              {log.action === 'DueDateChanged' && ` đã đổi deadline từ "${log.oldValue}" thành "${log.newValue}"`}
+                              {log.action === 'CommentAdded' && ` đã thêm bình luận: "${log.newValue}"`}
+                              {log.action === 'SubtaskAdded' && ` đã thêm subtask: "${log.newValue}"`}
+                              {log.action === 'Completed' && ' đã hoàn thành công việc'}
+                            </p>
+                            <time className="task-modal-timeline-time">
+                              {new Date(log.createdAt).toLocaleString('vi-VN')}
+                            </time>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'Comments' && (
+                <div className="task-modal-comments fb-comments">
+                  {displayedComments.length === 0 ? (
+                    <div className="task-modal-empty fb-comments-empty">
+                      <p>Chưa có bình luận nào.</p>
+                      <span>Hãy là người đầu tiên bình luận.</span>
+                    </div>
+                  ) : (
+                    <div className="fb-comments-scroll" ref={commentsScrollRef}>
+                      {renderComments(displayedComments)}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleAddComment} className="fb-composer">
+                    <div className="fb-avatar">{currentUserInitials}</div>
+                    <div className="fb-input-pill">
+                      <textarea
+                        className="fb-input-field"
+                        placeholder="Viết bình luận..."
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        rows={1}
+                        onKeyDown={(e) => handleCommentKeyDown(e, handleAddComment)}
+                      />
+                      {commentText.trim() && (
+                        <button type="submit" className="fb-send-btn" title="Gửi" aria-label="Gửi bình luận">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

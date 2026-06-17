@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { HttpError } from '../api/http';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { Alert } from '../components/ui/Alert';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { useAuth } from '../context/AuthContext';
@@ -33,7 +34,7 @@ export function LoginPage() {
     <div className="login-page">
       <aside className="login-hero">
         <div className="login-hero-content">
-          <span className="brand-logo lg">ERP</span>
+          <BrandLogo variant="hero" />
           <h1>Quản trị nhân sự & phân quyền tập trung</h1>
           <p>
             Nền tảng HRM nội bộ — quản lý nhân sự, phòng ban, vai trò, quyền hạn và thông báo realtime

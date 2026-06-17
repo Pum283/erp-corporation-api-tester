@@ -336,6 +336,20 @@ export function ChatPage() {
 
   const formatTime = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  const scrollToMessage = (msgId: string) => {
+    const rowElement = document.getElementById(`msg-${msgId}`);
+    if (rowElement) {
+      rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const bubble = rowElement.querySelector('.chat-msg-bubble');
+      if (bubble) {
+        bubble.classList.add('highlight-pulse');
+        setTimeout(() => {
+          bubble.classList.remove('highlight-pulse');
+        }, 1500);
+      }
+    }
+  };
+
   const filteredConversations = conversations.filter((c) =>
     getConversationTitle(c).toLowerCase().includes(searchText.toLowerCase())
   );
@@ -483,7 +497,7 @@ export function ChatPage() {
                         else if (isLast) groupPos = 'group-last';
 
                         return (
-                          <div key={m.id} className={`chat-message-row ${isMine ? 'mine' : ''} ${groupPos}`}>
+                          <div key={m.id} id={`msg-${m.id}`} className={`chat-message-row ${isMine ? 'mine' : ''} ${groupPos}`}>
                             {!isMine && (
                               <div className="chat-avatar">
                                 {m.fullName.substring(0, 2).toUpperCase()}
@@ -492,29 +506,56 @@ export function ChatPage() {
                             <div className="chat-msg-content">
                               {!isMine && isFirst && <div className="chat-msg-sender">{m.fullName}</div>}
                               <div className="chat-msg-bubble-wrapper">
-                                {isMine && (
-                                  <div className="chat-msg-actions-container">
-                                    <button className="chat-msg-action-btn" onClick={() => setReplyingTo(m)} title="Trả lời" type="button">↩️</button>
-                                    {!m.isDeleted && (
-                                      <button className="chat-msg-action-btn" onClick={() => handleCreateTaskFromMessage(m)} title="Tạo Task" type="button">📋</button>
-                                    )}
-                                    {isMine && !m.isDeleted && (
-                                      <>
-                                        <button className="chat-msg-action-btn" onClick={() => { setEditingMessage(m); setInputMessage(m.content || ''); }} title="Chỉnh sửa" type="button">✏️</button>
-                                        <button className="chat-msg-action-btn" onClick={() => messagesApi.remove(m.id)} title="Thu hồi" type="button">🗑️</button>
-                                      </>
-                                    )}
-                                  </div>
-                                )}
+                                {/* 
+                                  JSX order: [actions-container] [bubble-container] [time-inline]
+                                  Mine  (flex-direction: row)        → [actions LEFT] [bubble] [time RIGHT]
+                                  Others (flex-direction: row-reverse) → [time LEFT] [bubble] [actions RIGHT]
+                                */}
 
+                                {/* Actions + React trigger */}
+                                <div className="chat-msg-actions-container">
+                                  <button className="chat-msg-action-btn" onClick={() => setReplyingTo(m)} title="Trả lời" type="button">↩️</button>
+                                  {!m.isDeleted && (
+                                    <button className="chat-msg-action-btn" onClick={() => handleCreateTaskFromMessage(m)} title="Tạo Task" type="button">📋</button>
+                                  )}
+                                  {isMine && !m.isDeleted && (
+                                    <>
+                                      <button className="chat-msg-action-btn" onClick={() => { setEditingMessage(m); setInputMessage(m.content || ''); }} title="Chỉnh sửa" type="button">✏️</button>
+                                      <button className="chat-msg-action-btn" onClick={() => messagesApi.remove(m.id)} title="Thu hồi" type="button">🗑️</button>
+                                    </>
+                                  )}
+                                  {/* React emoji trigger */}
+                                  <div className="chat-msg-react-wrapper">
+                                    <button className="chat-msg-action-btn chat-msg-react-trigger" title="Bày tỏ cảm xúc" type="button">😀</button>
+                                    <div className="chat-msg-react-popup">
+                                      <button className="emoji-btn" onClick={() => handleReact(m.id, '👍')} type="button">👍</button>
+                                      <button className="emoji-btn" onClick={() => handleReact(m.id, '❤️')} type="button">❤️</button>
+                                      <button className="emoji-btn" onClick={() => handleReact(m.id, '😂')} type="button">😂</button>
+                                      <button className="emoji-btn" onClick={() => handleReact(m.id, '😮')} type="button">😮</button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Time — inline next to bubble, LEFT for mine, RIGHT for others */}
+                                <span className="chat-msg-time-inline">{formatTime(m.sentAt)}</span>
+
+                                {/* Bubble */}
                                 <div className="chat-msg-bubble-container">
                                   <div className="chat-msg-bubble">
-                                    {/* Reply reference */}
-                                    {m.parentMessageID && (
-                                      <div className="chat-reply-ref">
-                                        ↩️ Trích dẫn tin nhắn
-                                      </div>
-                                    )}
+                                    {/* Reply reference — show actual parent content */}
+                                    {m.parentMessageID && (() => {
+                                      const parentMsg = messages.find(pm => pm.id === m.parentMessageID);
+                                      return (
+                                        <div 
+                                          className="chat-reply-ref" 
+                                          onClick={() => scrollToMessage(m.parentMessageID!)}
+                                          title="Đi đến tin nhắn gốc"
+                                        >
+                                          <span className="chat-reply-name">{parentMsg?.fullName || 'Tin nhắn'}</span>
+                                          <span className="chat-reply-content">{parentMsg?.content || 'Tin nhắn đã thu hồi'}</span>
+                                        </div>
+                                      );
+                                    })()}
 
                                     {/* Content */}
                                     {isTaskLink ? (
@@ -531,50 +572,36 @@ export function ChatPage() {
 
                                     {/* Edited badge */}
                                     {m.isEdited && <span className="chat-msg-edited">(đã sửa)</span>}
+                                  </div>
 
-                                    {/* Reactions */}
-                                    {m.reactions.length > 0 && (
+                                  {/* Reactions — grouped by emoji with count */}
+                                  {m.reactions.length > 0 && (() => {
+                                    const groups: Record<string, typeof m.reactions> = {};
+                                    m.reactions.forEach(r => {
+                                      if (!groups[r.reactionType]) groups[r.reactionType] = [];
+                                      groups[r.reactionType].push(r);
+                                    });
+                                    const myReactionTypes = m.reactions
+                                      .filter(r => r.userID === currentUserId)
+                                      .map(r => r.reactionType);
+                                    return (
                                       <div className="reactions-list">
-                                        {m.reactions.map((r, ri) => (
+                                        {Object.entries(groups).map(([emoji, reacts]) => (
                                           <span
-                                            key={ri}
-                                            className={`reaction-tag ${r.userID === currentUserId ? 'mine' : ''}`}
-                                            onClick={() => handleReact(m.id, r.reactionType)}
+                                            key={emoji}
+                                            className={`reaction-tag ${myReactionTypes.includes(emoji) ? 'mine' : ''}`}
+                                            onClick={() => handleReact(m.id, emoji)}
+                                            title={reacts.map(r => r.fullName).join(', ')}
                                           >
-                                            {r.reactionType}
-                                            <span className="reaction-name">{r.fullName?.split(' ').pop()}</span>
+                                            {emoji}{reacts.length > 1 && <span className="reaction-count">{reacts.length}</span>}
                                           </span>
                                         ))}
                                       </div>
-                                    )}
-                                  </div>
-
-                                  <div className="chat-msg-react-container">
-                                    <div className="chat-msg-react-wrapper">
-                                      <button className="chat-msg-react-trigger" title="Bày tỏ cảm xúc" type="button">😀</button>
-                                      <div className="chat-msg-react-popup">
-                                        <button className="emoji-btn" onClick={() => handleReact(m.id, '👍')} type="button">👍</button>
-                                        <button className="emoji-btn" onClick={() => handleReact(m.id, '❤️')} type="button">❤️</button>
-                                        <button className="emoji-btn" onClick={() => handleReact(m.id, '😂')} type="button">😂</button>
-                                        <button className="emoji-btn" onClick={() => handleReact(m.id, '😮')} type="button">😮</button>
-                                      </div>
-                                    </div>
-                                  </div>
+                                    );
+                                  })()}
                                 </div>
 
-                                {!isMine && (
-                                  <div className="chat-msg-actions-container">
-                                    <button className="chat-msg-action-btn" onClick={() => setReplyingTo(m)} title="Trả lời" type="button">↩️</button>
-                                    {!m.isDeleted && (
-                                      <button className="chat-msg-action-btn" onClick={() => handleCreateTaskFromMessage(m)} title="Tạo Task" type="button">📋</button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Time — visible on last message or on hover */}
-                              <div className="chat-msg-meta">
-                                <span className="chat-msg-time">{formatTime(m.sentAt)}</span>
+                                {/* (time-inline removed from here — now inside bubble) */}
                               </div>
                             </div>
                           </div>

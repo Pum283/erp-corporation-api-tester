@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { BrandLogo } from '../ui/BrandLogo';
 import { IconLogout } from '../ui/Icons';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
@@ -13,11 +14,8 @@ export function AppLayout() {
     <div className="erp-shell">
       <aside className="erp-sidebar">
         <div className="brand">
-          <span className="brand-logo">ERP</span>
-          <div>
-            <strong>Corporation</strong>
-            <small>HRM & RBAC Platform</small>
-          </div>
+          <BrandLogo variant="sidebar" />
+          <span className="brand-subtitle">ERP Platform</span>
         </div>
 
         <nav className="erp-nav">
