@@ -31,6 +31,8 @@ export interface UserDto {
   roles: string[];
   permissions: string[];
   bypassDataScope: boolean;
+  checkInTimeTarget?: string | null;
+  checkOutTimeTarget?: string | null;
 }
 
 export interface UserDepartmentDto {
@@ -55,6 +57,8 @@ export interface DepartmentDto {
   managerName?: string | null;
   description?: string | null;
   isActive: boolean;
+  checkInTimeTarget?: string | null;
+  checkOutTimeTarget?: string | null;
 }
 
 export interface PermissionDto {
@@ -310,3 +314,80 @@ export interface ConversationDto {
   lastMessage?: MessageDto | null;
   unreadCount: number;
 }
+
+export interface AttendanceLocationDto {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusInMeters: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+  createdBy?: string | null;
+  assignedUserIds: string[];
+  assignedDepartmentIds: string[];
+}
+
+export interface CreateAttendanceLocationRequest {
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusInMeters: number;
+  assignedUserIds: string[];
+  assignedDepartmentIds: string[];
+}
+
+export interface UpdateAttendanceLocationRequest {
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusInMeters: number;
+  isActive: boolean;
+  assignedUserIds: string[];
+  assignedDepartmentIds: string[];
+}
+
+export type AttendanceType = 'CheckIn' | 'CheckOut';
+
+export interface CheckInRequest {
+  latitude: number;
+  longitude: number;
+  type: AttendanceType;
+}
+
+export interface CheckInResultDto {
+  isSuccess: boolean;
+  message: string;
+  distanceInMeters?: number | null;
+  locationName?: string | null;
+  checkTime: string;
+}
+
+export interface AttendanceLogDto {
+  id: string;
+  userId: string;
+  userFullName: string;
+  userEmployeeCode: string;
+  attendanceLocationId?: string | null;
+  attendanceLocationName?: string | null;
+  checkTime: string;
+  latitude: number;
+  longitude: number;
+  distanceInMeters?: number | null;
+  isSuccess: boolean;
+  type: AttendanceType;
+  failureReason?: string | null;
+}
+
+export interface AttendanceDto {
+  id: string;
+  userId: string;
+  userFullName: string;
+  date: string;
+  checkInTime?: string | null;
+  checkInLocationName?: string | null;
+  checkOutTime?: string | null;
+  checkOutLocationName?: string | null;
+}
+

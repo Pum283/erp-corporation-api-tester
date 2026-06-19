@@ -1815,3 +1815,48 @@
 .modal-body-no-scroll .modal-footer {
   flex-shrink: 0;
 }
+
+/* ─── View mode toggle (table / tree) ─── */
+.view-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-table-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+}
+
+.view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.view-mode-btn:hover:not(.active) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.view-mode-btn.active {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--primary-text);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Spin animation for loading indicators */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

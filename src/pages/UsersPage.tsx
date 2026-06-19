@@ -31,6 +31,8 @@ const emptyUserForm = {
   managerId: '',
   avatarUrl: '',
   password: '',
+  checkInTimeTarget: '',
+  checkOutTimeTarget: '',
 };
 
 export function UsersPage() {
@@ -108,6 +110,8 @@ export function UsersPage() {
       managerId: user.managerId ?? '',
       avatarUrl: user.avatarUrl ?? '',
       password: '',
+      checkInTimeTarget: user.checkInTimeTarget ?? '',
+      checkOutTimeTarget: user.checkOutTimeTarget ?? '',
     });
     setMode('form');
   }
@@ -156,6 +160,8 @@ export function UsersPage() {
           status: form.status,
           managerId: form.managerId || null,
           avatarUrl: form.avatarUrl || null,
+          checkInTimeTarget: form.checkInTimeTarget || null,
+          checkOutTimeTarget: form.checkOutTimeTarget || null,
         });
         setSuccess('Cập nhật nhân sự thành công');
       } else {
@@ -170,6 +176,8 @@ export function UsersPage() {
           managerId: form.managerId || null,
           avatarUrl: form.avatarUrl || null,
           password: form.password || null,
+          checkInTimeTarget: form.checkInTimeTarget || null,
+          checkOutTimeTarget: form.checkOutTimeTarget || null,
         });
         setSuccess('Tạo nhân sự thành công');
       }
@@ -464,6 +472,22 @@ export function UsersPage() {
               />
             </label>
           )}
+          <label>
+            Giờ vào làm mục tiêu (HH:mm)
+            <input
+              placeholder="VD: 08:30 (Mặc định: theo phòng ban)"
+              value={form.checkInTimeTarget}
+              onChange={(e) => setForm({ ...form, checkInTimeTarget: e.target.value })}
+            />
+          </label>
+          <label>
+            Giờ tan ca mục tiêu (HH:mm)
+            <input
+              placeholder="VD: 17:30 (Mặc định: theo phòng ban)"
+              value={form.checkOutTimeTarget}
+              onChange={(e) => setForm({ ...form, checkOutTimeTarget: e.target.value })}
+            />
+          </label>
           <div className="form-actions span-2">
             <button type="button" className="btn" onClick={closeModal}>
               Hủy

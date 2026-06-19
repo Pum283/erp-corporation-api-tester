@@ -10,6 +10,7 @@ import {
   IconUsers,
   IconMessage,
   IconClipboard,
+  IconClock,
 } from '../components/ui/Icons';
 
 /** Mã quyền khớp với backend AuthorizePermission / CrudPermissions */
@@ -58,6 +59,8 @@ export const P = {
   TASK_ITEM_APPROVE: 'task.item.approve',
   TASK_COMMENT_CREATE: 'task.comment.create',
   TASK_REPORT_READ: 'task.report.read',
+  ATTENDANCES_LOCATION_MANAGE: 'attendances.location.manage',
+  ATTENDANCES_LOG_READ: 'attendances.log.read',
 } as const;
 
 export type PermissionCode = (typeof P)[keyof typeof P];
@@ -85,6 +88,7 @@ export const NAV_SECTIONS: NavSectionDef[] = [
     items: [
       { to: '/chat', label: 'Chat nội bộ', icon: IconMessage, permission: P.CHAT_CONVERSATION_READ },
       { to: '/tasks', label: 'Quản lý công việc', icon: IconClipboard, permission: P.TASK_ITEM_READ },
+      { to: '/attendance', label: 'Chấm công', icon: IconClock },
     ],
   },
   {
@@ -132,4 +136,5 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionCode | undefined> = {
   '/permissions': P.SYSTEM_PERMISSION_READ,
   '/notification-event-types': P.SYSTEM_NOTIFICATION_EVENT_READ,
   '/notification-triggers': P.SYSTEM_NOTIFICATION_TRIGGER_READ,
+  '/attendance': undefined,
 };

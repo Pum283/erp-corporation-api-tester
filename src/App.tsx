@@ -18,6 +18,7 @@ import { RolesPage } from './pages/RolesPage';
 import { UsersPage } from './pages/UsersPage';
 import { ChatPage } from './pages/ChatPage';
 import { TasksPage } from './pages/TasksPage';
+import { AttendancePage } from './pages/AttendancePage';
 import './App.css';
 
 export default function App() {
@@ -108,6 +109,14 @@ export default function App() {
                       element={
                         <PermissionRoute permission={P.SYSTEM_NOTIFICATION_TRIGGER_READ}>
                           <NotificationTriggersPage />
+                        </PermissionRoute>
+                      }
+                    />
+                    <Route
+                      path="attendance"
+                      element={
+                        <PermissionRoute>
+                          <AttendancePage />
                         </PermissionRoute>
                       }
                     />

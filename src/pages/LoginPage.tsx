@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 export function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@company.com');
+  const [email, setEmail] = useState('admin1@digifnb.com');
   const [password, setPassword] = useState('!Abc123');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -33,18 +33,63 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <aside className="login-hero">
+        <div className="login-hero-glow-1"></div>
+        <div className="login-hero-glow-2"></div>
         <div className="login-hero-content">
-          <BrandLogo variant="hero" />
-          <h1>Quản trị nhân sự & phân quyền tập trung</h1>
-          <p>
-            Nền tảng HRM nội bộ — quản lý nhân sự, phòng ban, vai trò, quyền hạn và thông báo realtime
-            trên một giao diện thống nhất.
+          <BrandLogo variant="hero" className="hero-logo" />
+          <span className="login-hero-tag">Nền tảng Quản trị Nội bộ</span>
+          <h1>
+            Quản trị nhân sự <br />
+            <span>&amp; phân quyền tập trung</span>
+          </h1>
+          <p className="login-hero-desc">
+            Hệ thống HRM hợp nhất cơ chế RBAC chi tiết và kênh thông báo realtime, tối ưu hóa quy trình vận hành và kiểm soát an toàn thông tin.
           </p>
-          <ul className="login-hero-features">
-            <li>Quản lý nhân sự & phòng ban</li>
-            <li>RBAC — vai trò & quyền chi tiết</li>
-            <li>Thông báo realtime qua SignalR</li>
-          </ul>
+
+          <div className="login-hero-features-new">
+            <div className="feature-item">
+              <div className="feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div className="feature-text">
+                <h3>Quản lý nhân sự &amp; sơ đồ tổ chức</h3>
+                <p>Quản lý thông tin hồ sơ, phòng ban trực quan sinh động</p>
+              </div>
+            </div>
+
+            <div className="feature-item">
+              <div className="feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <div className="feature-text">
+                <h3>Phân quyền RBAC nâng cao</h3>
+                <p>Kiểm soát truy cập chi tiết tới từng chức năng và API</p>
+              </div>
+            </div>
+
+            <div className="feature-item">
+              <div className="feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+              </div>
+              <div className="feature-text">
+                <h3>Kết nối Realtime thông suốt</h3>
+                <p>Đồng bộ thông báo và cập nhật tức thời qua SignalR</p>
+              </div>
+            </div>
+          </div>
+
+
         </div>
       </aside>
 
@@ -69,7 +114,7 @@ export function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="username"
-                placeholder="admin@company.com"
+                placeholder="admin1@digifnb.com"
               />
             </label>
             <label>
@@ -88,7 +133,7 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="login-hint">Tài khoản seed: admin@company.com / !Abc123</p>
+          <p className="login-hint">Tài khoản seed: admin1@digifnb.com / !Abc123</p>
         </div>
       </div>
     </div>

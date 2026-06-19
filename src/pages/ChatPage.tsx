@@ -27,6 +27,12 @@ export function ChatPage() {
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [taskMessageSource, setTaskMessageSource] = useState<MessageDto | null>(null);
 
+  // Member management state
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [memberModalTab, setMemberModalTab] = useState<'list' | 'add'>('list');
+  const [selectedAddMemberIds, setSelectedAddMemberIds] = useState<string[]>([]);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+
   // Group creation form
   const [groupTitle, setGroupTitle] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
@@ -51,6 +57,14 @@ export function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<any>(null);
 
+  const activeConversationRef = useRef<ConversationDto | null>(null);
+  const joinedConversationsRef = useRef<Set<string>>(new Set());
+
+  // Update active conversation ref
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+  }, [activeConversation]);
+
   // Load conversations and users
   useEffect(() => {
     loadConversations();
@@ -63,23 +77,27 @@ export function ChatPage() {
 
   // Connect to SignalR
   useEffect(() => {
+    if (!currentUserId) return;
+
     const conn = createChatHubConnection({
       onReceiveMessage: (msg) => {
-        if (activeConversation && msg.conversationID === activeConversation.id) {
+        const active = activeConversationRef.current;
+        if (active && msg.conversationID === active.id) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
-          messagesApi.markAsRead(activeConversation.id);
+          messagesApi.markAsRead(active.id);
         }
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id === msg.conversationID) {
               const isMine = msg.userID === currentUserId;
+              const active = activeConversationRef.current;
               return {
                 ...c,
                 lastMessage: msg,
-                unreadCount: isMine || (activeConversation && activeConversation.id === c.id) ? c.unreadCount : c.unreadCount + 1,
+                unreadCount: isMine || (active && active.id === c.id) ? c.unreadCount : c.unreadCount + 1,
                 updatedAt: new Date().toISOString(),
               };
             }
@@ -88,7 +106,8 @@ export function ChatPage() {
         );
       },
       onMessageEdited: (msg) => {
-        if (activeConversation && msg.conversationID === activeConversation.id) {
+        const active = activeConversationRef.current;
+        if (active && msg.conversationID === active.id) {
           setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
         }
         setConversations((prev) =>
@@ -147,18 +166,40 @@ export function ChatPage() {
     conn.start()
       .then(() => {
         connectionRef.current = conn;
-        if (activeConversation) {
-          conn.invoke('JoinConversation', activeConversation.id);
-        }
+        // Trigger Join for any loaded conversations
+        conversations.forEach((c) => {
+          if (!joinedConversationsRef.current.has(c.id)) {
+            conn.invoke('JoinConversation', c.id)
+              .then(() => joinedConversationsRef.current.add(c.id))
+              .catch((err) => console.error(`Error joining conversation ${c.id}:`, err));
+          }
+        });
       })
       .catch((err) => console.error('SignalR ChatHub connection error: ', err));
 
     return () => {
       if (connectionRef.current) {
         connectionRef.current.stop();
+        connectionRef.current = null;
       }
+      joinedConversationsRef.current.clear();
     };
-  }, [activeConversation, currentUserId]);
+  }, [currentUserId]);
+
+  // Join all conversations when connection starts or conversations list loads/updates
+  useEffect(() => {
+    if (connectionRef.current && conversations.length > 0) {
+      conversations.forEach((c) => {
+        if (!joinedConversationsRef.current.has(c.id)) {
+          connectionRef.current?.invoke('JoinConversation', c.id)
+            .then(() => {
+              joinedConversationsRef.current.add(c.id);
+            })
+            .catch((err) => console.error(`Error joining conversation ${c.id}:`, err));
+        }
+      });
+    }
+  }, [conversations, connectionRef.current]);
 
   // Handle changing conversation
   useEffect(() => {
@@ -170,9 +211,6 @@ export function ChatPage() {
           prev.map((c) => (c.id === activeConversation.id ? { ...c, unreadCount: 0 } : c))
         );
       });
-      if (connectionRef.current) {
-        connectionRef.current.invoke('JoinConversation', activeConversation.id);
-      }
     }
   }, [activeConversation]);
 
@@ -182,13 +220,12 @@ export function ChatPage() {
   }, [messages.length, activeConversation?.id, typingUsers[activeConversation?.id || '']]);
 
   const handleSelectConversation = (conv: ConversationDto) => {
-    if (activeConversation && connectionRef.current) {
-      connectionRef.current.invoke('LeaveConversation', activeConversation.id);
-    }
     setActiveConversation(conv);
     setReplyingTo(null);
     setEditingMessage(null);
   };
+
+
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,6 +304,32 @@ export function ChatPage() {
     loadConversations();
     setActiveConversation(newConv);
     setShowCreateDirectModal(false);
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!activeConversation) return;
+    try {
+      await conversationsApi.removeMember(activeConversation.id, userId);
+      const updated = await conversationsApi.get(activeConversation.id);
+      setActiveConversation(updated);
+      loadConversations();
+    } catch (err) {
+      console.error('Lỗi khi xóa thành viên:', err);
+    }
+  };
+
+  const handleAddMembers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeConversation || selectedAddMemberIds.length === 0) return;
+    try {
+      await conversationsApi.addMembers(activeConversation.id, selectedAddMemberIds);
+      setSelectedAddMemberIds([]);
+      const updated = await conversationsApi.get(activeConversation.id);
+      setActiveConversation(updated);
+      loadConversations();
+    } catch (err) {
+      console.error('Lỗi khi thêm thành viên:', err);
+    }
   };
 
   const handleReact = async (msgId: string, emoji: string) => {
@@ -441,6 +504,11 @@ export function ChatPage() {
                 </div>
               </div>
               <div className="chat-header-actions">
+                {activeConversation.conversationType === 'Group' && (
+                  <button className="btn-chat-action" onClick={() => { setShowMembersModal(true); setMemberModalTab('list'); }}>
+                    👥 Thành viên
+                  </button>
+                )}
                 <button className="btn-chat-action" onClick={() => toggleMute(activeConversation)}>
                   {activeConversation.members.find((m) => m.userID === currentUserId)?.isMuted ? '🔔 Bật âm' : '🔇 Tắt âm'}
                 </button>
@@ -567,11 +635,11 @@ export function ChatPage() {
                                         </a>
                                       </div>
                                     ) : (
-                                      <div>{m.content}</div>
+                                      <div className="chat-msg-text-wrapper">
+                                        {m.content}
+                                        {m.isEdited && <span className="chat-msg-edited">(đã sửa)</span>}
+                                      </div>
                                     )}
-
-                                    {/* Edited badge */}
-                                    {m.isEdited && <span className="chat-msg-edited">(đã sửa)</span>}
                                   </div>
 
                                   {/* Reactions — grouped by emoji with count */}
@@ -823,6 +891,110 @@ export function ChatPage() {
                 <button type="submit" className="btn-primary">Tạo Task và Gửi Chat</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Manage Group Members */}
+      {showMembersModal && activeConversation && (
+        <div className="modal-backdrop">
+          <div className="chat-modal" style={{ width: '500px' }}>
+            <h4>👥 Quản lý thành viên nhóm</h4>
+            
+            <div className="chat-modal-tabs">
+              <div 
+                className={`chat-modal-tab ${memberModalTab === 'list' ? 'active' : ''}`}
+                onClick={() => setMemberModalTab('list')}
+              >
+                Danh sách ({activeConversation.members.length})
+              </div>
+              <div 
+                className={`chat-modal-tab ${memberModalTab === 'add' ? 'active' : ''}`}
+                onClick={() => {
+                  setMemberModalTab('add');
+                  setSelectedAddMemberIds([]);
+                  setMemberSearchQuery('');
+                }}
+              >
+                Thêm thành viên
+              </div>
+            </div>
+
+            {memberModalTab === 'list' ? (
+              <div>
+                <div className="user-selector-list" style={{ maxHeight: '350px' }}>
+                  {activeConversation.members.map((m) => (
+                    <div key={m.userID} className="member-list-item">
+                      <div className="member-info">
+                        <div className="chat-avatar small">
+                          {m.fullName.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="member-name">{m.fullName}</div>
+                          <div className="member-code">{m.employeeCode}</div>
+                        </div>
+                      </div>
+                      {m.userID !== currentUserId && (
+                        <button 
+                          type="button" 
+                          className="btn-remove-member"
+                          onClick={() => handleRemoveMember(m.userID)}
+                          title="Xóa khỏi nhóm"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn-secondary" onClick={() => setShowMembersModal(false)}>Đóng</button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleAddMembers}>
+                <div className="member-search-box">
+                  <input 
+                    type="text" 
+                    placeholder="Tìm đồng nghiệp..." 
+                    value={memberSearchQuery}
+                    onChange={(e) => setMemberSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="user-selector-list" style={{ maxHeight: '250px' }}>
+                  {users
+                    .filter(u => {
+                      const isAlreadyMember = activeConversation.members.some(m => m.userID === u.id);
+                      if (isAlreadyMember) return false;
+                      const query = memberSearchQuery.toLowerCase();
+                      return u.fullName.toLowerCase().includes(query) || u.employeeCode.toLowerCase().includes(query);
+                    })
+                    .map(u => {
+                      const selected = selectedAddMemberIds.includes(u.id);
+                      return (
+                        <div 
+                          key={u.id} 
+                          className="user-selector-item" 
+                          onClick={() => setSelectedAddMemberIds(prev => selected ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                        >
+                          <input type="checkbox" checked={selected} readOnly />
+                          <span>{u.fullName} ({u.employeeCode})</span>
+                        </div>
+                      );
+                    })}
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn-secondary" onClick={() => setMemberModalTab('list')}>Quay lại</button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary"
+                    disabled={selectedAddMemberIds.length === 0}
+                  >
+                    Thêm vào nhóm ({selectedAddMemberIds.length})
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

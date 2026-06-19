@@ -316,6 +316,7 @@
   flex: 1;
   padding: 20px 28px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   scroll-behavior: smooth;
@@ -373,6 +374,7 @@
   display: flex;
   gap: 10px;
   max-width: 70%;
+  align-self: flex-start;
   animation: msgSlideIn 0.22s ease-out;
 }
 
@@ -389,9 +391,6 @@
 
 .chat-message-row.mine {
   align-self: flex-end;
-  flex-direction: row;
-  width: 100%;
-  justify-content: flex-end;
 }
 
 .chat-message-row .chat-avatar {
@@ -405,8 +404,9 @@
   visibility: hidden;
 }
 
-/* Only show avatar on the LAST message in a group */
-.chat-message-row.group-last .chat-avatar {
+/* Only show avatar on the LAST message in a group, and on single messages */
+.chat-message-row.group-last .chat-avatar,
+.chat-message-row.group-single .chat-avatar {
   opacity: 1;
   visibility: visible;
 }
@@ -423,7 +423,7 @@
   flex-direction: column;
   min-width: 0;
   align-items: flex-start;
-  max-width: 65%;
+  max-width: 100%;
 }
 
 .chat-message-row.mine .chat-msg-content {
@@ -447,12 +447,21 @@
   color: var(--text);
   position: relative;
   transition: all 0.15s ease;
-  min-width: 48px;
+  min-width: 0;
   max-width: 100%;
   word-wrap: break-word;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   line-height: 1.5;
   font-size: 0.93rem;
+}
+
+.chat-msg-text-wrapper {
+  min-width: 0;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ─── MY message gradient bubble ─── */
@@ -655,10 +664,17 @@
 }
 
 .chat-msg-edited {
-  font-size: 0.66rem;
+  font-size: 0.65rem;
   color: var(--muted);
-  opacity: 0.7;
+  opacity: 0.65;
   font-style: italic;
+  margin-left: 6px;
+  display: inline-block;
+  user-select: none;
+}
+
+.chat-message-row.mine .chat-msg-edited {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* ─── Bubble wrapper ─── */
@@ -668,8 +684,7 @@
   gap: 6px;
   position: relative;
   max-width: 100%;
-  /* Mine: [actions LEFT] [bubble] [time RIGHT] */
-  flex-direction: row;
+  min-width: 0;
 }
 
 /* Others: row-reverse → visually [time LEFT] [bubble] [actions RIGHT] */
@@ -687,6 +702,7 @@
   max-width: 100%;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .chat-message-row.mine .chat-msg-bubble-container {
@@ -706,6 +722,22 @@
   visibility: hidden;
   transition: opacity 0.2s ease, visibility 0.2s ease;
   flex-shrink: 0;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.chat-message-row.mine .chat-msg-actions-container {
+  right: 100%;
+  margin-right: 8px;
+  left: auto;
+}
+
+.chat-message-row:not(.mine) .chat-msg-actions-container {
+  left: 100%;
+  margin-left: 8px;
+  right: auto;
 }
 
 .chat-msg-bubble-wrapper:hover .chat-msg-actions-container {
@@ -1233,4 +1265,98 @@
   .chat-message-row {
     max-width: 85%;
   }
+}
+
+/* ─── Group Member Management ─── */
+.member-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.member-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.member-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.member-code {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.btn-remove-member {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-remove-member:hover {
+  background: rgba(239, 68, 68, 0.1);
+  transform: scale(1.1);
+}
+
+.chat-modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.chat-modal-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.chat-modal-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.member-search-box {
+  margin-bottom: 14px;
+}
+
+.member-search-box input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.member-search-box input:focus {
+  border-color: var(--primary);
 }

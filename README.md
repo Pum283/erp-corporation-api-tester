@@ -28,7 +28,7 @@ npm install
 npm run dev
 ```
 
-**http://localhost:810** — Tài khoản seed: `admin@company.com` / `!Abc123` (mật khẩu chung cho mọi user seed)
+**http://localhost:810** — Tài khoản seed: `admin1@digifnb.com` / `!Abc123` (mật khẩu chung cho mọi user seed)
 
 ## Cấu hình
 

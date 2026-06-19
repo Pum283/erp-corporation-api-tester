@@ -21,6 +21,13 @@ import type {
   MessageReactionDto,
   TaskDto,
   TaskCommentDto,
+  AttendanceLocationDto,
+  AttendanceLogDto,
+  CheckInResultDto,
+  CreateAttendanceLocationRequest,
+  UpdateAttendanceLocationRequest,
+  AttendanceDto,
+  AttendanceType,
 } from '../types/entities';
 import type { ScopeType, UserStatus } from '../types/entities';
 
@@ -62,6 +69,8 @@ export const usersApi = {
     managerId?: string | null;
     avatarUrl?: string | null;
     password?: string | null;
+    checkInTimeTarget?: string | null;
+    checkOutTimeTarget?: string | null;
   }) => http<UserDto>('/api/users', { method: 'POST', body: data }),
   update: (id: string, data: {
     fullName: string;
@@ -72,6 +81,8 @@ export const usersApi = {
     status: UserStatus;
     managerId?: string | null;
     avatarUrl?: string | null;
+    checkInTimeTarget?: string | null;
+    checkOutTimeTarget?: string | null;
   }) => http<UserDto>(`/api/users/${id}`, { method: 'PUT', body: data }),
   remove: (id: string) => http<void>(`/api/users/${id}`, { method: 'DELETE' }),
   assignRoles: (id: string, roleIds: string[]) =>
@@ -101,6 +112,8 @@ export const departmentsApi = {
     parentDepartmentId?: string | null;
     managerId?: string | null;
     description?: string | null;
+    checkInTimeTarget?: string | null;
+    checkOutTimeTarget?: string | null;
   }) => http<DepartmentDto>('/api/departments', { method: 'POST', body: data }),
   update: (
     id: string,
@@ -111,6 +124,8 @@ export const departmentsApi = {
       managerId?: string | null;
       description?: string | null;
       isActive: boolean;
+      checkInTimeTarget?: string | null;
+      checkOutTimeTarget?: string | null;
     },
   ) => http<DepartmentDto>(`/api/departments/${id}`, { method: 'PUT', body: data }),
   remove: (id: string) => http<void>(`/api/departments/${id}`, { method: 'DELETE' }),
@@ -388,3 +403,36 @@ export const tasksApi = {
   addComment: (id: string, data: { content: string; parentCommentID?: string | null }) =>
     http<TaskCommentDto>(`/api/tasks/${id}/comments`, { method: 'POST', body: data }),
 };
+
+export const attendanceApi = {
+  listLocations: (params?: PaginationParams & { search?: string }) => {
+    let q = paginationQuery(params);
+    if (params?.search) q += `${q ? '&' : '?'}search=${encodeURIComponent(params.search)}`;
+    return http<PaginatedResult<AttendanceLocationDto>>(`/api/attendances/locations${q}`);
+  },
+  getLocation: (id: string) => http<AttendanceLocationDto>(`/api/attendances/locations/${id}`),
+  createLocation: (data: CreateAttendanceLocationRequest) =>
+    http<AttendanceLocationDto>('/api/attendances/locations', { method: 'POST', body: data }),
+  updateLocation: (id: string, data: UpdateAttendanceLocationRequest) =>
+    http<AttendanceLocationDto>(`/api/attendances/locations/${id}`, { method: 'PUT', body: data }),
+  checkIn: (data: { latitude: number; longitude: number; type: AttendanceType }) =>
+    http<CheckInResultDto>(`/api/attendances/check-in?latitude=${data.latitude}&longitude=${data.longitude}`, { method: 'POST', body: { type: data.type } }),
+  getTodayStatus: () =>
+    http<AttendanceDto | null>('/api/attendances/today'),
+  listLogs: (params?: PaginationParams & {
+    userId?: string;
+    isSuccess?: boolean;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }) => {
+    let q = paginationQuery(params);
+    if (params?.userId) q += `${q ? '&' : '?'}userId=${params.userId}`;
+    if (params?.isSuccess !== undefined) q += `${q ? '&' : '?'}isSuccess=${params.isSuccess}`;
+    if (params?.startDate) q += `${q ? '&' : '?'}startDate=${params.startDate}`;
+    if (params?.endDate) q += `${q ? '&' : '?'}endDate=${params.endDate}`;
+    if (params?.search) q += `${q ? '&' : '?'}search=${encodeURIComponent(params.search)}`;
+    return http<PaginatedResult<AttendanceLogDto>>(`/api/attendances/logs${q}`);
+  },
+};
+
