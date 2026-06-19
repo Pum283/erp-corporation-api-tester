@@ -663,7 +663,7 @@ export function AttendancePage() {
                 ) : personalDaysList.length === 0 ? (
                   <p className="muted pad text-center">Bạn chưa thực hiện chấm công nào.</p>
                 ) : (
-                  <table className="data-table">
+                  <table className="data-table responsive-table personal-logs-table">
                     <thead>
                       <tr>
                         <th>Ngày</th>
@@ -740,7 +740,7 @@ export function AttendancePage() {
                     Quay lại danh sách ngày
                   </button>
                 </div>
-                <table className="data-table">
+                <table className="data-table responsive-table personal-log-details-table">
                   <thead>
                     <tr>
                       <th>Thời gian</th>
@@ -915,7 +915,7 @@ export function AttendancePage() {
                 />
                 <span className="muted">{filteredStaff.length} nhân viên</span>
               </div>
-              <table className="data-table">
+              <table className="data-table responsive-table staff-table">
                 <thead>
                   <tr>
                     <th>Mã NV</th>
@@ -984,7 +984,7 @@ export function AttendancePage() {
               ) : daysList.length === 0 ? (
                 <p className="muted pad text-center">Nhân viên này chưa thực hiện chấm công nào.</p>
               ) : (
-                <table className="data-table">
+                <table className="data-table responsive-table staff-days-table">
                   <thead>
                     <tr>
                       <th>Ngày</th>
@@ -1067,7 +1067,7 @@ export function AttendancePage() {
                 </button>
               </div>
 
-              <table className="data-table">
+              <table className="data-table responsive-table staff-log-details-table">
                 <thead>
                   <tr>
                     <th>Thời gian</th>

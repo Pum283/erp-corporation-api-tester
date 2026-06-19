@@ -142,7 +142,7 @@ export function PermissionsPage() {
         {loading ? (
           <p className="muted pad">Đang tải...</p>
         ) : (
-          <table className="data-table">
+          <table className="data-table responsive-table permissions-table">
             <thead>
               <tr>
                 <th>Mã quyền</th>

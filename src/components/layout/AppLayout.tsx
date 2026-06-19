@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { BrandLogo } from '../ui/BrandLogo';
-import { IconLogout } from '../ui/Icons';
+import { IconLogout, IconMenu, IconClose } from '../ui/Icons';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 import { useAccess } from '../../hooks/useAccess';
@@ -9,10 +10,24 @@ import { useAccess } from '../../hooks/useAccess';
 export function AppLayout() {
   const { user, logout } = useAuth();
   const { visibleNavSections } = useAccess();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
     <div className="erp-shell">
-      <aside className="erp-sidebar">
+      {isMobileSidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsMobileSidebarOpen(false)} />
+      )}
+
+      <aside className={`erp-sidebar ${isMobileSidebarOpen ? 'open' : ''}`}>
+        <button
+          type="button"
+          className="sidebar-close-btn"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          aria-label="Đóng menu"
+        >
+          <IconClose width={18} height={18} />
+        </button>
+
         <div className="brand">
           <BrandLogo variant="sidebar" />
           <span className="brand-subtitle">ERP Platform</span>
@@ -30,6 +45,7 @@ export function AppLayout() {
                     to={item.to}
                     end={item.end ?? false}
                     className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+                    onClick={() => setIsMobileSidebarOpen(false)}
                   >
                     <span className="nav-icon">
                       <Icon width={18} height={18} />
@@ -49,6 +65,14 @@ export function AppLayout() {
 
       <div className="erp-main">
         <header className="erp-topbar">
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            aria-label="Mở menu"
+          >
+            <IconMenu width={20} height={20} />
+          </button>
           <div className="topbar-title">Hệ thống quản trị doanh nghiệp</div>
           <div className="topbar-user">
             <ThemeToggle />

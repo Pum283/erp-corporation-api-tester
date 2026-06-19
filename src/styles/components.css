@@ -1860,3 +1860,321 @@
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* ─── Responsive Helpers (Mobile Optimization) ─── */
+@media (max-width: 768px) {
+  .table-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .responsive-table,
+  .responsive-table tbody,
+  .responsive-table tr,
+  .responsive-table td {
+    display: block !important;
+  }
+
+  .responsive-table thead {
+    display: none !important;
+  }
+
+  .responsive-table tbody tr {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .responsive-table tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .responsive-table tbody tr:hover td {
+    background: transparent !important;
+  }
+
+  .responsive-table td {
+    padding: 0.65rem 0 !important;
+    border: none !important;
+    text-align: right !important;
+    font-size: 0.88rem;
+    color: var(--text);
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    width: 100% !important;
+    min-height: 1.25rem;
+    border-bottom: 1px dashed var(--border-subtle) !important;
+  }
+
+  /* Make main title / name stand out at the top of the card */
+  .responsive-table td:nth-child(2) {
+    order: -1;
+    display: block !important;
+    width: 100% !important;
+    text-align: left !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: var(--text) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding-bottom: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    padding-top: 0 !important;
+  }
+
+  .responsive-table td:nth-child(2) strong {
+    font-weight: 700 !important;
+  }
+
+  .responsive-table td code {
+    font-size: 0.78rem;
+  }
+
+  /* Actions column block at the bottom of the card */
+  .responsive-table td.actions-cell,
+  .responsive-table td.actions {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    width: 100% !important;
+    border-top: 1px solid var(--border) !important;
+    border-bottom: none !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 0 !important;
+    margin-top: 0.5rem;
+    margin-bottom: 0 !important;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Label Styling */
+  .responsive-table td::before {
+    content: "";
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    text-align: left !important;
+    display: inline-block;
+    margin-right: 0.5rem;
+  }
+
+  /* Hide labels for the title, actions, and columns that do not need them */
+  .responsive-table td:nth-child(2)::before,
+  .responsive-table td.actions-cell::before,
+  .responsive-table td.actions::before {
+    display: none !important;
+  }
+
+  /* Attendance tables: Column 1 is the main title (Date/Time), not Column 2 */
+  .personal-logs-table td:nth-child(1),
+  .staff-days-table td:nth-child(1),
+  .personal-log-details-table td:nth-child(1),
+  .staff-log-details-table td:nth-child(1) {
+    order: -1 !important;
+    display: block !important;
+    width: 100% !important;
+    text-align: left !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: var(--text) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding-bottom: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    padding-top: 0 !important;
+  }
+  .personal-logs-table td:nth-child(1)::before,
+  .staff-days-table td:nth-child(1)::before,
+  .personal-log-details-table td:nth-child(1)::before,
+  .staff-log-details-table td:nth-child(1)::before {
+    display: none !important;
+  }
+
+  /* Restore Column 2 to normal key-value row for Attendance tables */
+  .personal-logs-table td:nth-child(2),
+  .staff-days-table td:nth-child(2),
+  .personal-log-details-table td:nth-child(2),
+  .staff-log-details-table td:nth-child(2) {
+    order: 0 !important;
+    display: flex !important;
+    text-align: right !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+    color: var(--text-secondary) !important;
+    border-bottom: 1px dashed var(--border-subtle) !important;
+    padding: 0.65rem 0 !important;
+    margin-bottom: 0 !important;
+  }
+  .personal-logs-table td:nth-child(2)::before,
+  .staff-days-table td:nth-child(2)::before,
+  .personal-log-details-table td:nth-child(2)::before,
+  .staff-log-details-table td:nth-child(2)::before {
+    display: inline-block !important;
+  }
+
+  /* Clean up border bottoms for last data items */
+  .responsive-table td:last-child {
+    border-bottom: none !important;
+  }
+  /* If actions row exists, the item before it has no border bottom */
+  .responsive-table tr:has(td.actions-cell) td:nth-last-child(2),
+  .responsive-table tr:has(td.actions) td:nth-last-child(2) {
+    border-bottom: none !important;
+  }
+
+  /* ── Page-specific labels ── */
+
+  /* Users Table */
+  .users-table td:nth-child(1)::before { content: "Mã nhân sự:"; }
+  .users-table td:nth-child(3)::before { content: "Phòng ban:"; }
+  .users-table td:nth-child(4)::before { content: "Cấp bậc:"; }
+  .users-table td:nth-child(5)::before { content: "Trạng thái:"; }
+  .users-table td:nth-child(6)::before { content: "Vai trò:"; }
+
+  /* Roles Table */
+  .roles-table td:nth-child(1)::before { content: "Tên kỹ thuật:"; }
+  .roles-table td:nth-child(3)::before { content: "Phân quyền:"; }
+  .roles-table td:nth-child(4)::before { content: "Bypass scope:"; }
+  .roles-table td:nth-child(5)::before { content: "Trạng thái:"; }
+
+  /* Permissions Table */
+  .permissions-table td:nth-child(1)::before { content: "Mã quyền:"; }
+  .permissions-table td:nth-child(3)::before { content: "Module:"; }
+  .permissions-table td:nth-child(4)::before { content: "Hành động:"; }
+  .permissions-table td:nth-child(5)::before { content: "Tài nguyên:"; }
+  .permissions-table td:nth-child(6)::before { content: "Trạng thái:"; }
+
+  /* Job Levels Table */
+  .job-levels-table td:nth-child(1)::before { content: "Thứ tự cấp:"; }
+  .job-levels-table td:nth-child(3)::before { content: "Phạm vi dữ liệu:"; }
+  .job-levels-table td:nth-child(4)::before { content: "Lương min-max:"; }
+  .job-levels-table td:nth-child(5)::before { content: "Trạng thái:"; }
+
+  /* Departments Table */
+  .departments-table td:nth-child(1)::before { content: "Mã phòng ban:"; }
+  .departments-table td:nth-child(3)::before { content: "Phòng cha:"; }
+  .departments-table td:nth-child(4)::before { content: "Trưởng phòng:"; }
+  .departments-table td:nth-child(5)::before { content: "Trạng thái:"; }
+
+  /* Event Types Table */
+  .event-types-table td:nth-child(1)::before { content: "Mã sự kiện:"; }
+  .event-types-table td:nth-child(3)::before { content: "Module:"; }
+  .event-types-table td:nth-child(4)::before { content: "Tiêu đề mẫu:"; }
+  .event-types-table td:nth-child(5)::before { content: "Trạng thái:"; }
+
+  /* Triggers Table */
+  .triggers-table td:nth-child(1)::before { content: "Trigger Key:"; }
+  .triggers-table td:nth-child(3)::before { content: "Loại thông báo:"; }
+  .triggers-table td:nth-child(4)::before { content: "Người nhận:"; }
+  .triggers-table td:nth-child(5)::before { content: "Trạng thái:"; }
+
+  /* Personal Logs Table */
+  .personal-logs-table td:nth-child(2)::before { content: "Giờ vào:"; }
+  .personal-logs-table td:nth-child(3)::before { content: "Vị trí vào:"; }
+  .personal-logs-table td:nth-child(4)::before { content: "Giờ ra:"; }
+  .personal-logs-table td:nth-child(5)::before { content: "Vị trí ra:"; }
+  .personal-logs-table td:nth-child(6)::before { content: "Thời gian làm:"; }
+
+  /* Personal Log Details Table */
+  .personal-log-details-table td:nth-child(2)::before { content: "Loại:"; }
+  .personal-log-details-table td:nth-child(3)::before { content: "Tọa độ GPS:"; }
+  .personal-log-details-table td:nth-child(4)::before { content: "Địa điểm:"; }
+  .personal-log-details-table td:nth-child(5)::before { content: "Khoảng cách:"; }
+  .personal-log-details-table td:nth-child(6)::before { content: "Kết quả:"; }
+
+  /* Staff Table */
+  .staff-table td:nth-child(1)::before { content: "Mã nhân sự:"; }
+  .staff-table td:nth-child(3)::before { content: "Phòng ban:"; }
+  .staff-table td:nth-child(4)::before { content: "Cấp bậc:"; }
+  .staff-table td:nth-child(5)::before { content: "Trạng thái:"; }
+
+  /* Staff Days Table */
+  .staff-days-table td:nth-child(2)::before { content: "Giờ vào:"; }
+  .staff-days-table td:nth-child(3)::before { content: "Địa điểm vào:"; }
+  .staff-days-table td:nth-child(4)::before { content: "Giờ ra:"; }
+  .staff-days-table td:nth-child(5)::before { content: "Địa điểm ra:"; }
+  .staff-days-table td:nth-child(6)::before { content: "Thời gian làm:"; }
+
+  /* Staff Log Details Table */
+  .staff-log-details-table td:nth-child(2)::before { content: "Loại:"; }
+  .staff-log-details-table td:nth-child(3)::before { content: "Tọa độ GPS:"; }
+  .staff-log-details-table td:nth-child(4)::before { content: "Địa điểm:"; }
+  .staff-log-details-table td:nth-child(5)::before { content: "Khoảng cách:"; }
+  .staff-log-details-table td:nth-child(6)::before { content: "Kết quả:"; }
+
+  /* Tasks List Table */
+  .tasks-list-table td:nth-child(1)::before { content: "Mã công việc:"; }
+  .tasks-list-table td:nth-child(3)::before { content: "Trạng thái:"; }
+  .tasks-list-table td:nth-child(4)::before { content: "Mức ưu tiên:"; }
+  .tasks-list-table td:nth-child(5)::before { content: "Người thực hiện:"; }
+  .tasks-list-table td:nth-child(6)::before { content: "Hạn chót:"; }
+  .tasks-list-table td:nth-child(7)::before { content: "Tiến độ:"; }
+
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
+
+  .option-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .recipient-panels {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .pick-list {
+    max-height: 180px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .page-actions {
+    width: 100%;
+  }
+
+  .page-actions .btn {
+    flex: 1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .search-input {
+    max-width: 100%;
+  }
+}

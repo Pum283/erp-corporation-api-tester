@@ -422,7 +422,7 @@ export function ChatPage() {
     : [];
 
   return (
-    <div className="chat-container">
+    <div className={`chat-container ${activeConversation ? 'has-active-chat' : 'no-active-chat'}`}>
       {/* ═══ Sidebar ═══ */}
       <div className="chat-sidebar">
         <div className="chat-sidebar-header">
@@ -491,6 +491,14 @@ export function ChatPage() {
             {/* Header */}
             <div className="chat-header">
               <div className="chat-header-left">
+                <button
+                  type="button"
+                  className="chat-back-btn"
+                  onClick={() => setActiveConversation(null)}
+                  title="Quay lại"
+                >
+                  ←
+                </button>
                 <div className="chat-avatar small">
                   {getConversationInitials(activeConversation)}
                 </div>

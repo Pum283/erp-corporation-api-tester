@@ -162,7 +162,7 @@ export function RolesPage() {
         {loading ? (
           <p className="muted pad">Đang tải...</p>
         ) : (
-          <table className="data-table">
+          <table className="data-table responsive-table roles-table">
             <thead>
               <tr>
                 <th>Tên kỹ thuật</th>

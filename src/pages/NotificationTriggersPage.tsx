@@ -174,7 +174,7 @@ export function NotificationTriggersPage() {
 
       <div className="card">
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table responsive-table triggers-table">
             <thead>
               <tr>
                 <th>Trigger</th>

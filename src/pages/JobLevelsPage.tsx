@@ -135,7 +135,7 @@ export function JobLevelsPage() {
         {loading ? (
           <p className="muted pad">Đang tải...</p>
         ) : (
-          <table className="data-table">
+          <table className="data-table responsive-table job-levels-table">
             <thead>
               <tr>
                 <th>Thứ tự</th>

@@ -257,7 +257,7 @@ export function DepartmentsPage() {
           {loading || usersLoading ? (
             <p className="muted pad">Đang tải...</p>
           ) : (
-            <table className="data-table">
+            <table className="data-table responsive-table departments-table">
               <thead>
                 <tr>
                   <th>Mã</th>

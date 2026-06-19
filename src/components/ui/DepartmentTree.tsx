@@ -201,6 +201,36 @@ export function DepartmentTree({ departments, onEdit, onDelete, onReparent, canE
     panStart.current = { ...pan };
   }
 
+  function handleTouchStart(e: React.TouchEvent) {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('.org-card-wrapper') ||
+      target.closest('.org-controls') ||
+      target.closest('.org-root-dropzone')
+    ) {
+      return;
+    }
+    const touch = e.touches[0];
+    setIsDraggingCanvas(true);
+    dragStart.current = { x: touch.clientX, y: touch.clientY };
+    panStart.current = { ...pan };
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!isDraggingCanvas) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStart.current.x;
+    const dy = touch.clientY - dragStart.current.y;
+    setPan({
+      x: panStart.current.x + dx,
+      y: panStart.current.y + dy,
+    });
+  }
+
+  function handleTouchEnd() {
+    setIsDraggingCanvas(false);
+  }
+
   // Node Drag Handlers (Canvas coordinate movement)
   function handleNodeMouseDown(e: React.MouseEvent, nodeId: string) {
     if (e.button !== 0) return;
@@ -377,6 +407,9 @@ export function DepartmentTree({ departments, onEdit, onDelete, onReparent, canE
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div
           className="dept-tree-inner"

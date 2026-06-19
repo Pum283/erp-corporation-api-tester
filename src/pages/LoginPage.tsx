@@ -32,9 +32,9 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
+      <div className="login-hero-glow-1"></div>
+      <div className="login-hero-glow-2"></div>
       <aside className="login-hero">
-        <div className="login-hero-glow-1"></div>
-        <div className="login-hero-glow-2"></div>
         <div className="login-hero-content">
           <BrandLogo variant="hero" className="hero-logo" />
           <span className="login-hero-tag">Nền tảng Quản trị Nội bộ</span>
@@ -98,6 +98,7 @@ export function LoginPage() {
           <div className="login-theme-row">
             <ThemeToggle />
           </div>
+          <BrandLogo variant="hero" className="mobile-only-logo" />
           <div className="login-card-header">
             <h2>Đăng nhập</h2>
             <p>Nhập tài khoản để truy cập hệ thống</p>

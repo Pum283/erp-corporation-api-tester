@@ -582,7 +582,7 @@ export function TasksPage() {
         </div>
       ) : (
         <div className="tasks-list-view">
-          <table className="tasks-table">
+          <table className="tasks-table responsive-table tasks-list-table">
             <thead>
               <tr>
                 <th>Mã Task</th>

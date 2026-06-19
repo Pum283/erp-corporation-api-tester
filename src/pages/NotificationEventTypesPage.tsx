@@ -133,7 +133,7 @@ export function NotificationEventTypesPage() {
 
       <div className="card">
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table responsive-table event-types-table">
             <thead>
               <tr>
                 <th>Mã</th>
